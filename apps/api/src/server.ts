@@ -11,6 +11,7 @@ import {
   getFileForUser,
   listFiles,
   markFileDeleted,
+  saveSignedInAccount,
 } from '@telegram-drive/metadata'
 import { mimeTypeFor, sanitizeFileName } from './file-name'
 import { loadEnvFile, readRuntimeConfig, repoRoot } from './runtime-config'
@@ -174,23 +175,18 @@ async function handleAuthLogout(response: ServerResponse, app: AppContext): Prom
 }
 
 async function handleMe(response: ServerResponse, app: AppContext): Promise<void> {
-  const identity = await app.service.getCurrentUser()
-  const account = await getAccount(app.prisma, identity.telegramUserId)
-  if (!account) {
-    sendJson(response, 404, { ok: false, code: 'NOT_FOUND', message: 'Not found.' })
-    return
-  }
+  const account = await ensureAccount(app)
   sendJson(response, 200, { ok: true, account })
 }
 
 async function handleList(response: ServerResponse, app: AppContext): Promise<void> {
-  const account = await requireAccount(app)
+  const account = await ensureAccount(app)
   const files = await listFiles(app.prisma, account.userId)
   sendJson(response, 200, { ok: true, files })
 }
 
 async function handleUpload(request: IncomingMessage, response: ServerResponse, app: AppContext): Promise<void> {
-  const account = await requireAccount(app)
+  const account = await ensureAccount(app)
   let fileName: string
   try {
     fileName = sanitizeFileName(request.headers['x-file-name']?.toString() ?? '')
@@ -231,7 +227,7 @@ async function handleUpload(request: IncomingMessage, response: ServerResponse, 
 }
 
 async function handleDownload(request: IncomingMessage, response: ServerResponse, app: AppContext, fileId: string): Promise<void> {
-  const account = await requireAccount(app)
+  const account = await ensureAccount(app)
   const file = await getFileForUser(app.prisma, account.userId, fileId)
   if (!file) {
     sendJson(response, 404, { ok: false, code: 'NOT_FOUND', message: 'Not found.' })
@@ -275,7 +271,7 @@ function readByteRange(header: string | undefined, size: number): { start: numbe
 }
 
 async function handleDelete(response: ServerResponse, app: AppContext, fileId: string): Promise<void> {
-  const account = await requireAccount(app)
+  const account = await ensureAccount(app)
   const file = await getFileForUser(app.prisma, account.userId, fileId)
   if (!file) {
     sendJson(response, 404, { ok: false, code: 'NOT_FOUND', message: 'Not found.' })
@@ -286,11 +282,12 @@ async function handleDelete(response: ServerResponse, app: AppContext, fileId: s
   sendJson(response, 200, { ok: true, file: deleted })
 }
 
-async function requireAccount(app: AppContext) {
+async function ensureAccount(app: AppContext) {
   const identity = await app.service.getCurrentUser()
-  const account = await getAccount(app.prisma, identity.telegramUserId)
-  if (!account) throw new AppError('NOT_FOUND', 'Not found.')
-  return account
+  const existing = await getAccount(app.prisma, identity.telegramUserId)
+  if (existing) return existing
+  const sessionDir = path.dirname(readRuntimeConfig().databaseDirectory)
+  return saveSignedInAccount(app.prisma, identity, sessionDir)
 }
 
 function authorized(header: string | undefined, secret: string): boolean {
