@@ -1,0 +1,24 @@
+{
+  "name": "@telegram-drive/telegram",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/errors.test.ts src/identity.test.ts src/auth-flow.test.ts src/logger.test.ts src/saved-messages.test.ts src/uploaded-file.test.ts src/downloaded-file.test.ts src/deleted-message.test.ts"
+  },
+  "dependencies": {
+    "@prebuilt-tdlib/types": "0.1008067.0",
+    "@telegram-drive/types": "*",
+    "prebuilt-tdlib": "0.1008067.0",
+    "tdl": "8.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}

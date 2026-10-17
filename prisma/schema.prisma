@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String           @id @default(cuid())
+  telegramUserId String           @unique
+  username       String?
+  firstName      String
+  lastName       String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  session        TelegramSession?
+  folders        Folder[]
+  files          File[]
+  uploadJobs     UploadJob[]
+  downloadJobs   DownloadJob[]
+  syncState      SyncState?
+}
+
+model TelegramSession {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataDirectory String
+  authState     String
+  lastReadyAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Folder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Folder[] @relation("FolderTree")
+  name      String
+  files     File[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, parentId, name])
+}
+
+enum FileStatus {
+  PENDING
+  UPLOADING
+  UPLOADED
+  FAILED
+  DELETING
+  DELETED
+}
+
+model File {
+  id                String       @id @default(cuid())
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderId          String?
+  folder            Folder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  name              String
+  mimeType          String
+  size              BigInt
+  telegramChatId    String
+  telegramMessageId String
+  telegramFileId    String
+  telegramRemoteId  String?
+  status            FileStatus
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  uploadJobs        UploadJob[]
+  downloadJobs      DownloadJob[]
+}
+
+model UploadJob {
+  id        String   @id @default(cuid())
+  fileId    String
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  state     String
+  errorCode String?
+  progress  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DownloadJob {
+  id        String   @id @default(cuid())
+  fileId    String
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  state     String
+  errorCode String?
+  progress  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SyncState {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSyncedAt  DateTime?
+  lastErrorCode String?
+  cursor        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}

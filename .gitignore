@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.tdlib-data/
+.tdlib-smoke/
+tdlib-data/
+sessions/
+**/*.tdb
+.next/
+
+*.log
+npm-debug.log*

@@ -1,0 +1,34 @@
+{
+  "name": "telegram-drive",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal cloud drive stored in the user's own Telegram account.",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "auth": "npm run auth -w @telegram-drive/api",
+    "saved-messages": "npm run saved-messages -w @telegram-drive/api",
+    "upload-test": "npm run upload-test -w @telegram-drive/api",
+    "download-test": "npm run download-test -w @telegram-drive/api",
+    "delete-test": "npm run delete-test -w @telegram-drive/api",
+    "db:migrate": "prisma migrate deploy",
+    "metadata": "npm run metadata -w @telegram-drive/api",
+    "dev": "npm run dev -w @telegram-drive/api",
+    "web": "npm run dev -w @telegram-drive/web",
+    "tdlib:check": "npm run tdlib:check -w @telegram-drive/api",
+    "test": "npm run test -w @telegram-drive/telegram && npm run test -w @telegram-drive/metadata && npm run test -w @telegram-drive/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "prisma": "6.19.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}

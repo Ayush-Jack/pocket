@@ -1,0 +1,30 @@
+{
+  "name": "@telegram-drive/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "auth": "tsx src/auth-cli.ts",
+    "saved-messages": "tsx src/saved-messages-cli.ts",
+    "upload-test": "tsx src/upload-test-cli.ts",
+    "download-test": "tsx src/download-test-cli.ts",
+    "delete-test": "tsx src/delete-test-cli.ts",
+    "metadata": "tsx src/metadata-cli.ts",
+    "dev": "tsx src/server.ts",
+    "tdlib:check": "tsx src/check-tdlib.ts",
+    "test": "tsx --test src/runtime-config.test.ts src/http-guards.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@telegram-drive/metadata": "*",
+    "@telegram-drive/telegram": "*",
+    "@telegram-drive/types": "*",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}
