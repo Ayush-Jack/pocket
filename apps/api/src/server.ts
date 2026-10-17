@@ -30,19 +30,10 @@ async function main(): Promise<void> {
   }
 
   const apiUrl = new URL(process.env.API_URL?.trim() || 'http://localhost:4000')
-  const port = Number(apiUrl.port || 80)
+  const port = Number(process.env.PORT) || Number(apiUrl.port) || 4000
   const service = createTelegramStorageService(readRuntimeConfig())
   const prisma = createMetadataClient()
   let telegramReady = false
-
-  try {
-    await service.start()
-    telegramReady = service.getAuthorizationState() === 'authorizationStateReady'
-    if (!telegramReady) service.beginSignIn()
-  } catch (error) {
-    const safe = error instanceof AppError ? error : new AppError('NOT_AUTHORIZED', 'Telegram authorization is not complete. Run npm run auth.')
-    process.stderr.write(`${JSON.stringify({ level: 'error', operation: 'api.start', code: safe.code })}\n`)
-  }
 
   const server = createServer((request, response) => {
     void handleRequest(request, response, { secret, service, prisma, telegramReady })
@@ -63,9 +54,18 @@ async function main(): Promise<void> {
 
   server.requestTimeout = UPLOAD_DEADLINE_MS
   server.headersTimeout = 60_000
-  server.listen(port, () => {
+  server.listen(port, '0.0.0.0', () => {
     process.stdout.write(`${JSON.stringify({ ok: true, operation: 'api.listen', port, telegramReady })}\n`)
   })
+
+  try {
+    await service.start()
+    telegramReady = service.getAuthorizationState() === 'authorizationStateReady'
+    if (!telegramReady) service.beginSignIn()
+  } catch (error) {
+    const safe = error instanceof AppError ? error : new AppError('NOT_AUTHORIZED', 'Telegram authorization is not complete. Run npm run auth.')
+    process.stderr.write(`${JSON.stringify({ level: 'error', operation: 'api.start', code: safe.code })}\n`)
+  }
 }
 
 interface AppContext {
@@ -79,6 +79,10 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
   const url = new URL(request.url ?? '/', 'http://localhost')
   const pathName = url.pathname
   try {
+    if (request.method === 'GET' && pathName === '/health') {
+      sendJson(response, 200, { ok: true })
+      return
+    }
     if (!authorized(request.headers.authorization, app.secret)) {
       sendJson(response, 401, { ok: false, code: 'UNAUTHORIZED', message: 'Authorization is required.' })
       return

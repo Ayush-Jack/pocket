@@ -20,6 +20,7 @@
     "db:migrate": "prisma migrate deploy",
     "metadata": "npm run metadata -w @telegram-drive/api",
     "dev": "npm run dev -w @telegram-drive/api",
+    "start:api": "prisma migrate deploy && npm run dev -w @telegram-drive/api",
     "web": "npm run dev -w @telegram-drive/web",
     "tdlib:check": "npm run tdlib:check -w @telegram-drive/api",
     "test": "npm run test -w @telegram-drive/telegram && npm run test -w @telegram-drive/metadata && npm run test -w @telegram-drive/api",
