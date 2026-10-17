@@ -1,6 +1,7 @@
 import 'server-only'
 import { existsSync, readFileSync } from 'node:fs'
 import { request as httpRequest } from 'node:http'
+import { request as httpsRequest } from 'node:https'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { UPLOAD_DEADLINE_MS } from '@telegram-drive/types'
@@ -207,12 +208,13 @@ function postUpload(
   }
   if (contentLength !== undefined) headers['content-length'] = String(contentLength)
 
+  const secure = url.protocol === 'https:'
   return new Promise((resolve, reject) => {
-    const req = httpRequest(
+    const req = (secure ? httpsRequest : httpRequest)(
       {
         hostname: url.hostname,
-        port: url.port,
-        path: url.pathname,
+        ...(url.port ? { port: Number(url.port) } : {}),
+        path: `${url.pathname}${url.search}`,
         method: 'POST',
         headers,
         timeout: UPLOAD_DEADLINE_MS,
