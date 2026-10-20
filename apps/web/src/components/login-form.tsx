@@ -12,7 +12,7 @@ export function LoginForm({ initial }: { initial: AuthStatus }) {
 
   useEffect(() => {
     if (!status.ready) return
-    window.location.assign('/')
+    window.location.assign('/drive')
   }, [status.ready])
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function LoginForm({ initial }: { initial: AuthStatus }) {
         .then((response) => response.json() as Promise<AuthStatus>)
         .then((next) => {
           if (next.ready) {
-            window.location.assign('/')
+            window.location.assign('/drive')
             return
           }
           setStatus((current) => {
@@ -51,7 +51,7 @@ export function LoginForm({ initial }: { initial: AuthStatus }) {
     setValue('')
     setLastName('')
     setPending(false)
-    if (next.ready) window.location.assign('/')
+    if (next.ready) window.location.assign('/drive')
   }
 
   if (status.ready) return null

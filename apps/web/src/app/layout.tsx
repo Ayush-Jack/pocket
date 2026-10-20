@@ -1,10 +1,6 @@
 import type { Metadata } from 'next'
 import { Atkinson_Hyperlegible, DM_Mono, Sora } from 'next/font/google'
-import { Suspense } from 'react'
-import { LoginForm } from '@/components/login-form'
-import { Sidebar } from '@/components/sidebar'
 import { SmoothScroll } from '@/components/smooth-scroll'
-import { getAuthStatus } from '@/lib/drive-api'
 import './globals.css'
 
 const display = Sora({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600'] })
@@ -26,19 +22,11 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const auth = await getAuthStatus()
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen antialiased`}>
-        <SmoothScroll>
-        <div className="mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 gap-4 p-3 sm:gap-6 sm:p-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:p-8">
-          <Suspense fallback={null}>
-            <Sidebar />
-          </Suspense>
-          <main className="min-w-0">{auth.ready ? children : <LoginForm initial={auth} />}</main>
-        </div>
-        </SmoothScroll>
+        <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>
   )

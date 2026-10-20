@@ -31,7 +31,7 @@ export default async function SettingsPage() {
         <p className="mt-1 font-[family-name:var(--font-display)] text-xl">{account.data.folderName}</p>
       </article>
       <LogoutButton />
-      <Link data-rise="" href="/" className="clay-pill w-fit bg-[var(--accent)] px-4 py-3 text-sm">
+      <Link data-rise="" href="/drive" className="clay-pill w-fit bg-[var(--accent)] px-4 py-3 text-sm">
         Back to Pocket
       </Link>
     </section>

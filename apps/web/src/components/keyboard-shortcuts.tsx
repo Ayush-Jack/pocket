@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import { riseIn } from '@/components/smooth-scroll'
 
 const sections = [
-  { key: '1', href: '/', label: 'All files' },
-  { key: '2', href: '/?view=photos', label: 'Photos' },
-  { key: '3', href: '/?view=videos', label: 'Videos' },
-  { key: '4', href: '/?view=documents', label: 'Documents' },
+  { key: '1', href: '/drive', label: 'All files' },
+  { key: '2', href: '/drive?view=photos', label: 'Photos' },
+  { key: '3', href: '/drive?view=videos', label: 'Videos' },
+  { key: '4', href: '/drive?view=documents', label: 'Documents' },
   { key: '5', href: '/settings', label: 'Settings' },
   { key: '6', href: '/developer', label: 'Developer' },
 ] as const

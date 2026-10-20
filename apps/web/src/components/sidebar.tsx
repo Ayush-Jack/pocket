@@ -1,16 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
+import gsap from 'gsap'
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
 import { Logo } from '@/components/logo'
+import { reducedMotion } from '@/components/smooth-scroll'
 
 const links = [
-  { href: '/', label: 'All files', tint: 'var(--accent)' },
-  { href: '/?view=photos', label: 'Photos', tint: 'var(--lilac)' },
-  { href: '/?view=videos', label: 'Videos', tint: 'var(--mint)' },
-  { href: '/?view=documents', label: 'Documents', tint: 'var(--peach)' },
+  { href: '/drive', label: 'All files', tint: 'var(--accent)' },
+  { href: '/drive?view=photos', label: 'Photos', tint: 'var(--lilac)' },
+  { href: '/drive?view=videos', label: 'Videos', tint: 'var(--mint)' },
+  { href: '/drive?view=documents', label: 'Documents', tint: 'var(--peach)' },
 ]
 
 const bottomLinks = [
@@ -22,13 +24,27 @@ export function Sidebar() {
   const pathname = usePathname()
   const search = useSearchParams().toString()
   const [open, setOpen] = useState(false)
+  const asideRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     setOpen(false)
   }, [pathname, search])
 
+  useEffect(() => {
+    const node = asideRef.current
+    if (!node || reducedMotion()) return
+    const intro = gsap.fromTo(
+      node,
+      { autoAlpha: 0, y: 18 },
+      { autoAlpha: 1, y: 0, duration: 0.7, ease: 'power3.out', clearProps: 'transform,opacity,visibility' },
+    )
+    return () => {
+      intro.kill()
+    }
+  }, [])
+
   return (
-    <aside data-rise-once="" className="clay flex flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:sticky lg:top-8 lg:h-[calc(100svh-4rem)] lg:p-5">
+    <aside ref={asideRef} className="clay flex flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:sticky lg:top-8 lg:h-[calc(100svh-4rem)] lg:p-5">
       <div className="flex items-center gap-3">
         <Logo className="h-12 w-12 sm:h-14 sm:w-14" />
         <div className="min-w-0 flex-1">

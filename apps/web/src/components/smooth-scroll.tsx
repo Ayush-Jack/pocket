@@ -26,15 +26,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
     gsap.ticker.add(tick)
     gsap.ticker.lagSmoothing(0)
 
-    const shell = document.querySelectorAll<HTMLElement>('[data-rise-once]')
-    const intro = gsap.fromTo(
-      shell,
-      { autoAlpha: 0, y: 18 },
-      { autoAlpha: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.05, clearProps: 'transform,opacity,visibility' },
-    )
-
     return () => {
-      intro.kill()
       gsap.ticker.remove(tick)
       lenis.destroy()
     }

@@ -69,7 +69,7 @@ export default function DeveloperPage() {
             </div>
           </div>
         </article>
-        <Link data-rise="" href="/" className="clay-pill w-fit bg-[var(--clay)] px-4 py-3 text-sm">
+        <Link data-rise="" href="/drive" className="clay-pill w-fit bg-[var(--clay)] px-4 py-3 text-sm">
           Back to Pocket
         </Link>
       </section>
