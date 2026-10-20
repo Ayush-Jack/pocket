@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Logo } from '@/components/logo'
@@ -301,25 +301,6 @@ export function HeroFlightDeck() {
             <span className="relative inline-flex h-2 w-2 rounded-full bg-[#3b9874]" />
           </span>
           <span>SAVED MESSAGES GALLERY</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {HERO_GALLERY_ITEMS.map((item) => {
-            const active = item.id === selectedItem.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSelectedItem(item)}
-                className={`rounded-full px-3 py-1 font-[family-name:var(--font-mono)] text-[11px] transition-all ${
-                  active
-                    ? 'clay-press bg-[var(--accent)] font-medium text-[var(--ink)]'
-                    : 'bg-[var(--clay)]/80 text-[var(--muted)] hover:text-[var(--ink)]'
-                }`}
-              >
-                {item.category}
-              </button>
-            )
-          })}
         </div>
       </div>
 
@@ -890,6 +871,116 @@ export function InteractiveDriveShowcase() {
   )
 }
 
+function PocketFlipCard({
+  children,
+  back,
+}: {
+  children: ReactNode
+  back: ReactNode
+}) {
+  const boundsRef = useRef<HTMLDivElement>(null)
+  const tiltRef = useRef<HTMLDivElement>(null)
+  const targetRef = useRef({ x: 0, y: 0 })
+  const [flipped, setFlipped] = useState(false)
+
+  useEffect(() => {
+    const tilt = tiltRef.current
+    if (!tilt) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+
+    const spring = { x: 0, y: 0, vx: 0, vy: 0 }
+    let raf = 0
+    let last = performance.now()
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.032, Math.max(0.001, (now - last) / 1000))
+      last = now
+      const sub = dt / 2
+      for (let i = 0; i < 2; i += 1) {
+        const ax = -120 * (spring.x - targetRef.current.x) - 20 * spring.vx
+        spring.vx += ax * sub
+        spring.x += spring.vx * sub
+        const ay = -120 * (spring.y - targetRef.current.y) - 20 * spring.vy
+        spring.vy += ay * sub
+        spring.y += spring.vy * sub
+      }
+
+      const x = Math.max(-0.5, Math.min(0.5, spring.x))
+      const y = Math.max(-0.5, Math.min(0.5, spring.y))
+      const map = (value: number, from: number, to: number) => from + ((value + 0.5) / 1) * (to - from)
+      const rotX = map(y, 12, -12)
+      const rotY = map(x, -12, 12)
+      const liftX = map(x, -16, 16)
+      const liftY = map(y, -16, 16)
+      const shadowY = map(y, 20, 36)
+      const shadowBlur = map(y, 40, 60)
+
+      tilt.style.transform = `translate3d(${liftX.toFixed(2)}px, ${liftY.toFixed(2)}px, 0) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`
+      tilt.style.boxShadow = `0 ${shadowY.toFixed(1)}px ${shadowBlur.toFixed(1)}px rgba(0, 0, 51, 0.25)`
+      raf = window.requestAnimationFrame(tick)
+    }
+
+    raf = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(raf)
+  }, [])
+
+  return (
+    <div className="h-full min-h-[340px]" style={{ perspective: '900px' }}>
+      <div
+        ref={boundsRef}
+        className="h-full"
+        style={{ cursor: 'pointer', pointerEvents: flipped ? 'none' : 'auto' }}
+        onMouseMove={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          targetRef.current = {
+            x: (event.clientX - rect.left) / rect.width - 0.5,
+            y: (event.clientY - rect.top) / rect.height - 0.5,
+          }
+        }}
+        onMouseLeave={() => {
+          targetRef.current = { x: 0, y: 0 }
+        }}
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest('button')) return
+          setFlipped((value) => !value)
+        }}
+      >
+        <div
+          className="relative h-full"
+          style={{
+            transformStyle: 'preserve-3d',
+            transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+            transition: 'transform 0.6s ease-in-out',
+          }}
+        >
+          <div ref={tiltRef} className="relative h-full" style={{ transformStyle: 'preserve-3d', borderRadius: 28 }}>
+            <div
+              className="h-full"
+              style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', borderRadius: 28 }}
+            >
+              {children}
+            </div>
+            <div
+              className="absolute inset-0"
+              style={{
+                transform: 'rotateY(180deg)',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                borderRadius: 28,
+                overflow: 'hidden',
+                pointerEvents: flipped ? 'auto' : 'none',
+              }}
+            >
+              {back}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function WorksInteractiveSection() {
   const [chatMode, setChatMode] = useState<'telegram' | 'pocket'>('telegram')
   const [indexFilter, setIndexFilter] = useState<'all' | 'photo' | 'video' | 'doc'>('all')
@@ -940,18 +1031,24 @@ export function WorksInteractiveSection() {
             Three parts. One account.
           </h2>
         </div>
-        <p className="max-w-md text-sm text-[var(--muted)] sm:text-base">
-          Photos, videos, and documents stay in your own Telegram account while Pocket keeps them organized and ready to stream.
-        </p>
       </div>
 
-      <ul className="mt-8 grid gap-5 md:grid-cols-3">
-        {/* Step 01: Your Telegram (Sign-in & Server-Sealed Session) */}
-        <li
-          data-reveal-item=""
-          data-tilt="5"
-          className="clay clay-card-alive flex flex-col justify-between gap-5 p-5 sm:p-6"
-        >
+      <ul className="mt-8 grid items-stretch gap-5 md:grid-cols-3">
+        <li data-reveal-item="" className="min-h-[340px]">
+          <PocketFlipCard
+            back={
+              <div className="clay flex h-full flex-col items-center justify-center gap-3 bg-[var(--accent)] p-6 text-center">
+                <p className="font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
+                  01 · CONNECT
+                </p>
+                <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">Your Telegram</h3>
+                <p className="max-w-[16rem] text-sm text-[var(--muted)]">
+                  Sign in once. The session stays on the server.
+                </p>
+              </div>
+            }
+          >
+            <div className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
@@ -986,9 +1083,7 @@ export function WorksInteractiveSection() {
 
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">Your Telegram</h3>
-              <p className="mt-2 text-[var(--muted)]">
-                Sign in once with your Telegram account. The first sign-in creates Pocket. The browser never sees the session.
-              </p>
+              <p className="mt-2 text-[var(--muted)]">Sign in once. The session stays on the server.</p>
             </div>
           </div>
 
@@ -1008,14 +1103,23 @@ export function WorksInteractiveSection() {
               </div>
             )}
           </div>
+            </div>
+          </PocketFlipCard>
         </li>
 
-        {/* Step 02: Saved Messages (Direct Telegram Cloud Storage) */}
-        <li
-          data-reveal-item=""
-          data-tilt="5"
-          className="clay clay-card-alive flex flex-col justify-between gap-5 p-5 sm:p-6"
-        >
+        <li data-reveal-item="" className="min-h-[340px]">
+          <PocketFlipCard
+            back={
+              <div className="clay flex h-full flex-col items-center justify-center gap-3 bg-[var(--lilac)] p-6 text-center">
+                <p className="font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
+                  02 · STORE
+                </p>
+                <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">Saved Messages</h3>
+                <p className="max-w-[16rem] text-sm text-[var(--muted)]">Your files stay in Saved Messages.</p>
+              </div>
+            }
+          >
+            <div className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
@@ -1050,9 +1154,7 @@ export function WorksInteractiveSection() {
 
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">Saved Messages</h3>
-              <p className="mt-2 text-[var(--muted)]">
-                Photos, videos, and documents stay in your own Telegram account. Pocket does not put them in another cloud.
-              </p>
+              <p className="mt-2 text-[var(--muted)]">Your files stay in Saved Messages.</p>
             </div>
           </div>
 
@@ -1103,14 +1205,23 @@ export function WorksInteractiveSection() {
               </div>
             )}
           </div>
+            </div>
+          </PocketFlipCard>
         </li>
 
-        {/* Step 03: The list (Smart Index & Instant Stream) */}
-        <li
-          data-reveal-item=""
-          data-tilt="5"
-          className="clay clay-card-alive flex flex-col justify-between gap-5 p-5 sm:p-6"
-        >
+        <li data-reveal-item="" className="min-h-[340px]">
+          <PocketFlipCard
+            back={
+              <div className="clay flex h-full flex-col items-center justify-center gap-3 bg-[var(--mint)] p-6 text-center">
+                <p className="font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
+                  03 · STREAM
+                </p>
+                <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">The list</h3>
+                <p className="max-w-[16rem] text-sm text-[var(--muted)]">Find it. Open it. Download it.</p>
+              </div>
+            }
+          >
+            <div className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
@@ -1139,9 +1250,7 @@ export function WorksInteractiveSection() {
 
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">The list</h3>
-              <p className="mt-2 text-[var(--muted)]">
-                Pocket keeps the name, size, and type so you can find a file, open it, and download it.
-              </p>
+              <p className="mt-2 text-[var(--muted)]">Find it. Open it. Download it.</p>
             </div>
           </div>
 
@@ -1162,6 +1271,8 @@ export function WorksInteractiveSection() {
               </div>
             ))}
           </div>
+            </div>
+          </PocketFlipCard>
         </li>
       </ul>
     </section>
@@ -1182,8 +1293,7 @@ type FramerStackCard = {
 const FRAMER_FEATURE_CARDS: FramerStackCard[] = [
   {
     title: 'Upload',
-    description:
-      'Choose one file or a whole set of food, travel, or work files. Pocket saves them one after another directly into your Telegram.',
+    description: 'One file or a set, saved into Telegram.',
     tag: 'Sequential Queue',
     cardGradient: 'linear-gradient(145deg, #f9fbff 0%, #eff3ff 58%, #e2e9ff 100%)',
     pillBg: 'var(--accent)',
@@ -1204,8 +1314,7 @@ const FRAMER_FEATURE_CARDS: FramerStackCard[] = [
   },
   {
     title: 'Photos, videos, documents',
-    description:
-      'Each kind has its own dedicated section. High-res food & travel photos and 4K videos open automatically as rich picture cards.',
+    description: 'Photos, videos, and documents, each in its own place.',
     tag: 'Smart Gallery',
     cardGradient: 'linear-gradient(145deg, #fcfbff 0%, #f2effc 58%, #e6e1f9 100%)',
     pillBg: 'var(--lilac)',
@@ -1226,8 +1335,7 @@ const FRAMER_FEATURE_CARDS: FramerStackCard[] = [
   },
   {
     title: 'Open and download',
-    description:
-      'Open any item to inspect its original filename, category, and Telegram message ID, then stream or download it at full quality.',
+    description: 'Open any file, then stream or download it.',
     tag: 'Direct Stream',
     cardGradient: 'linear-gradient(145deg, #f9fdfb 0%, #ebf7f2 58%, #dcefe7 100%)',
     pillBg: 'var(--mint)',
@@ -1248,8 +1356,7 @@ const FRAMER_FEATURE_CARDS: FramerStackCard[] = [
   },
   {
     title: 'Delete, in single click',
-    description:
-      'Delete removes the file from your Telegram Saved Messages first. Any file over 2 GB is stopped immediately before upload starts.',
+    description: 'Delete from Saved Messages. Files over 2 GB never upload.',
     tag: '2 GB Guard',
     cardGradient: 'linear-gradient(145deg, #fffcfa 0%, #fbf0ea 58%, #f7e4d8 100%)',
     pillBg: 'var(--peach)',
@@ -1532,7 +1639,7 @@ export function FeaturesInteractiveSection() {
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 <p className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                  FEATURES · SCROLL TO FLIP
+                  FEATURES
                 </p>
                 <h2
                   data-flight-features=""
@@ -1541,9 +1648,6 @@ export function FeaturesInteractiveSection() {
                   What you can do.
                 </h2>
               </div>
-              {/* <p className="max-w-md text-sm text-[var(--muted)] sm:text-base">
-                Scroll through the deck to explore sequential uploads, smart media galleries, direct streaming, and the 2 GB guard.
-              </p> */}
             </div>
           </div>
 
@@ -1949,9 +2053,6 @@ export function InteractiveStepsList() {
                     How to use Pocket.
                   </h2>
                 </div>
-                <p className="max-w-md text-sm text-[var(--muted)] sm:text-base">
-                  Scroll down to see every step in action starting from Step 01 through Step 06.
-                </p>
               </div>
             </div>
 

@@ -65,13 +65,10 @@ export default async function LandingPage() {
         {/* Hero Stage */}
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 pb-12 pt-8 sm:px-8 lg:min-h-[calc(100svh-6.5rem)] lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:pb-16">
           <div>
-            <div data-hero-reveal="" className="inline-flex flex-wrap items-center gap-2">
+            <div data-hero-reveal="">
               <span className="clay-pill gap-2 bg-[var(--clay)] px-4 py-2 font-[family-name:var(--font-mono)] text-xs text-[var(--ink)]">
                 <span className="h-2 w-2 rounded-full bg-[#3b9874]" />
                 Your files. Your space.
-              </span>
-              <span className="clay-pill bg-[var(--lilac)] px-3.5 py-2 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">
-                Powered by your own Telegram
               </span>
             </div>
 
@@ -82,11 +79,11 @@ export default async function LandingPage() {
               Your files stay in your Telegram.
             </h1>
 
-            <p data-hero-reveal="" className="mt-5 max-w-md text-lg leading-relaxed text-[var(--muted)]">
-              Pocket helps you upload, organize, and download files through your own Telegram account. The drive is here. The files stay in Saved Messages.
+            <p data-hero-reveal="" className="mt-5 max-w-sm text-lg leading-relaxed text-[var(--muted)]">
+              Upload, organize, and download through your own account.
             </p>
 
-            <div data-hero-reveal="" className="mt-8 flex flex-wrap items-center gap-3.5">
+            <div data-hero-reveal="" className="mt-8">
               <Link
                 href="/login"
                 data-magnetic=""
@@ -95,13 +92,6 @@ export default async function LandingPage() {
                 <span>Register / Login</span>
                 <span aria-hidden="true">→</span>
               </Link>
-              <a
-                href="#how-it-works"
-                data-magnetic=""
-                className="clay-pill bg-[var(--clay)] px-5 py-3.5 font-[family-name:var(--font-mono)] text-xs text-[var(--ink)]"
-              >
-                See how it works ↓
-              </a>
             </div>
 
             {/* Tactile Architecture Strip */}
@@ -124,7 +114,9 @@ export default async function LandingPage() {
             </dl>
           </div>
 
-          <HeroFlightDeck />
+          <div className="hidden md:block">
+            <HeroFlightDeck />
+          </div>
         </section>
 
         {/* How Pocket Works */}
@@ -151,15 +143,9 @@ export default async function LandingPage() {
             className="clay clay-card-alive flex flex-col items-center px-6 py-16 text-center sm:px-12 sm:py-20"
           >
             <Logo className="h-16 w-16" />
-            <p className="mt-5 font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-              ONE ACCOUNT · YOUR TELEGRAM
-            </p>
-            <h2 className="mt-2.5 font-[family-name:var(--font-display)] text-3xl font-medium leading-none sm:text-5xl">
+            <h2 className="mt-5 font-[family-name:var(--font-display)] text-3xl font-medium leading-none sm:text-5xl">
               Open your Pocket.
             </h2>
-            <p className="mt-4 max-w-md text-lg text-[var(--muted)]">
-              Register and login use the same Telegram sign-in. The first time creates your account.
-            </p>
             <Link
               href="/login"
               data-magnetic=""
