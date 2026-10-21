@@ -35,15 +35,15 @@ export default function DeveloperPage() {
             <img
               src="/developer.jpg"
               alt="Ayush Srivastava"
-              className="h-80 w-full object-cover object-[center_18%] sm:h-[26rem] md:h-full"
+              className="h-64 w-full object-cover object-[center_18%] sm:h-80 md:h-full"
             />
-            <div className="flex flex-col justify-between gap-8 p-6 md:p-8">
+            <div className="flex flex-col justify-between gap-6 p-5 sm:gap-8 sm:p-6 md:p-8">
               <div>
                 <div className="flex items-center gap-3">
                   <Logo className="h-10 w-10" />
                   <p className="font-[family-name:var(--font-mono)] text-xs tracking-[0.18em] text-[#D9E0FF]">DEVELOPER</p>
                 </div>
-                <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-medium leading-none">Ayush Srivastava</h1>
+                <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-medium leading-none sm:text-4xl">Ayush Srivastava</h1>
                 <p className="mt-4 max-w-sm text-[#C9D3E0]">
                   I built Pocket so files stay in your own Telegram account. The app keeps the details. The bytes stay in Saved Messages.
                 </p>

@@ -2,11 +2,12 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
   FeaturesInteractiveSection,
-  HeroFlightDeck,
+  HeroFileObject,
   InteractiveStepsList,
   LandingChoreography,
   WorksInteractiveSection,
 } from '@/components/LandingShowcase'
+import { PointerHighlight } from '@/components/ui/pointer-highlight'
 import { Logo } from '@/components/logo'
 import { getAuthStatus } from '@/lib/drive-api'
 
@@ -18,104 +19,125 @@ export default async function LandingPage() {
     <div className="ambient-field min-h-screen">
       <LandingChoreography />
 
-      <header className="sticky top-3 z-30 mx-auto w-full max-w-6xl px-4 pt-2 sm:px-8">
-        <div className="clay flex items-center justify-between gap-4 bg-[var(--clay)]/90 px-4 py-3 backdrop-blur-md sm:px-5">
-          <div className="flex items-center gap-3">
-            <Logo className="h-10 w-10" />
-            <div>
-              <p className="font-[family-name:var(--font-display)] text-lg font-medium leading-none">Pocket</p>
-              <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
-                Saved Messages Drive
-              </p>
+      <header className="sticky top-2 z-30 mx-auto w-full max-w-7xl px-3 pt-1.5 sm:top-3 sm:px-6 sm:pt-2 lg:px-8">
+        <div className="clay flex flex-col gap-2 bg-[var(--clay)]/90 px-3.5 py-2.5 backdrop-blur-md sm:px-5 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+              <Logo className="h-9 w-9 shrink-0 sm:h-10 sm:w-10" />
+              <div className="min-w-0">
+                <p className="truncate font-[family-name:var(--font-display)] text-base font-medium leading-none sm:text-lg">
+                  Pocket
+                </p>
+                <p className="mt-0.5 truncate font-[family-name:var(--font-mono)] text-[9px] text-[var(--muted)] sm:text-[10px]">
+                  Saved Messages Drive
+                </p>
+              </div>
             </div>
+
+            <nav className="hidden items-center gap-1 lg:flex" aria-label="Page sections">
+              <a
+                href="#how-it-works"
+                className="rounded-full px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)]"
+              >
+                How it works
+              </a>
+              <a
+                href="#features"
+                className="rounded-full px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)]"
+              >
+                What you can do
+              </a>
+              <a
+                href="#steps"
+                className="rounded-full px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)]"
+              >
+                How to use
+              </a>
+            </nav>
+
+            <Link
+              href="/login"
+              data-magnetic=""
+              className="clay-pill shrink-0 bg-[var(--accent)] px-3.5 py-2 text-xs font-medium whitespace-nowrap sm:px-5 sm:text-sm"
+            >
+              Register / Login
+            </Link>
           </div>
 
-          <nav className="hidden items-center gap-1.5 md:flex" aria-label="Page sections">
+          {/* Mobile & Tablet quick section jump bar */}
+          <nav
+            className="no-scrollbar flex items-center justify-around gap-1 border-t border-[rgba(62,74,92,0.08)] pt-1.5 sm:justify-center sm:gap-2 lg:hidden"
+            aria-label="Mobile page sections"
+          >
             <a
               href="#how-it-works"
-              className="rounded-full px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)]"
+              className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
             >
               How it works
             </a>
             <a
               href="#features"
-              className="rounded-full px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)]"
+              className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
             >
               What you can do
             </a>
             <a
               href="#steps"
-              className="rounded-full px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)]"
+              className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
             >
               How to use
             </a>
           </nav>
-
-          <Link
-            href="/login"
-            data-magnetic=""
-            className="clay-pill bg-[var(--accent)] px-4 py-2 text-sm font-medium sm:px-5"
-          >
-            Register / Login
-          </Link>
         </div>
       </header>
 
-      <main>
+      <main className="overflow-x-clip">
         {/* Hero Stage */}
-        <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 pb-12 pt-8 sm:px-8 lg:min-h-[calc(100svh-6.5rem)] lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:pb-16">
-          <div>
-            <div data-hero-reveal="">
-              <span className="clay-pill gap-2 bg-[var(--clay)] px-4 py-2 font-[family-name:var(--font-mono)] text-xs text-[var(--ink)]">
-                <span className="h-2 w-2 rounded-full bg-[#3b9874]" />
-                Your files. Your space.
-              </span>
-            </div>
+        <section className="mx-auto grid min-h-[calc(100svh-5.5rem)] w-full max-w-7xl content-center items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 md:grid-cols-[1.05fr_0.95fr] md:gap-8 lg:gap-12 lg:px-8">
+          <div className="min-w-0 text-center md:text-left">
+            <p
+              data-hero-reveal=""
+              className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.18em] text-[var(--muted)]"
+            >
+              Your files · Your space
+            </p>
 
             <h1
               data-hero-reveal=""
-              className="mt-6 max-w-xl font-[family-name:var(--font-display)] text-5xl font-medium leading-[0.96] tracking-[-0.03em] sm:text-6xl lg:text-[4.1rem]"
+              className="mt-4 pb-2 font-[family-name:var(--font-display)] text-[2.45rem] font-medium leading-[1.03] tracking-[-0.025em] sm:mt-5 sm:text-5xl md:text-[3rem] lg:text-[3.85rem] xl:text-[4.35rem]"
             >
-              Your files stay in your Telegram.
+              Your files have a home. It&apos;s{' '}
+              <PointerHighlight
+                rectangleClassName="rounded-md border-[#c5cef8] bg-[var(--accent)]"
+                pointerClassName="h-4 w-4 text-[#5569dc]"
+                containerClassName="inline-block"
+              >
+                <span className="relative z-10 italic">Telegram</span>
+              </PointerHighlight>
+              .
             </h1>
 
-            <p data-hero-reveal="" className="mt-5 max-w-sm text-lg leading-relaxed text-[var(--muted)]">
-              Upload, organize, and download through your own account.
+            <p
+              data-hero-reveal=""
+              className="mx-auto mt-4 max-w-md text-base leading-relaxed text-[var(--muted)] sm:mt-5 sm:text-lg md:mx-0"
+            >
+              Turn scattered messages into an organized file library—ready to find, preview, and download whenever you need.
             </p>
 
-            <div data-hero-reveal="" className="mt-8">
+            <div data-hero-reveal="" className="mt-6 sm:mt-8">
               <Link
                 href="/login"
                 data-magnetic=""
-                className="clay-press inline-flex items-center gap-2.5 rounded-full bg-[var(--accent)] px-7 py-3.5 font-[family-name:var(--font-display)] text-lg font-medium"
+                className="clay-press inline-flex items-center gap-2.5 rounded-full bg-[var(--accent)] px-6 py-3 font-[family-name:var(--font-display)] text-base font-medium sm:px-7 sm:py-3.5 sm:text-lg"
               >
                 <span>Register / Login</span>
                 <span aria-hidden="true">→</span>
               </Link>
             </div>
-
-            {/* Tactile Architecture Strip */}
-            <dl
-              data-hero-reveal=""
-              className="mt-10 grid max-w-lg grid-cols-3 gap-2.5 pt-2"
-            >
-              <div className="clay px-3.5 py-3">
-                <dt className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">STORAGE</dt>
-                <dd className="mt-1 font-[family-name:var(--font-display)] text-sm font-medium">Saved Messages</dd>
-              </div>
-              <div className="clay px-3.5 py-3">
-                <dt className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">PER FILE STOP</dt>
-                <dd className="mt-1 font-[family-name:var(--font-display)] text-sm font-medium">Up to 2 GB</dd>
-              </div>
-              <div className="clay px-3.5 py-3">
-                <dt className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">SESSION</dt>
-                <dd className="mt-1 font-[family-name:var(--font-display)] text-sm font-medium">Server-sealed</dd>
-              </div>
-            </dl>
           </div>
 
-          <div className="hidden md:block">
-            <HeroFlightDeck />
+          <div className="min-w-0 w-full">
+            <HeroFileObject />
           </div>
         </section>
 
@@ -143,8 +165,8 @@ export default async function LandingPage() {
             className="clay clay-card-alive flex flex-col items-center px-6 py-16 text-center sm:px-12 sm:py-20"
           >
             <Logo className="h-16 w-16" />
-            <h2 className="mt-5 font-[family-name:var(--font-display)] text-3xl font-medium leading-none sm:text-5xl">
-              Open your Pocket.
+            <h2 className="mt-5 font-[family-name:var(--font-display)] text-3xl font-medium leading-none tracking-[-0.02em] sm:text-5xl">
+              Open your <span className="italic">Pocket</span>.
             </h2>
             <Link
               href="/login"

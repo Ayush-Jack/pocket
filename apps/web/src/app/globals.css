@@ -21,10 +21,21 @@
   display: none;
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   background: var(--field);
   color: var(--ink);
-  overflow-x: clip;
+  font-family: var(--font-body), sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+.pin-spacer {
+  max-width: 100% !important;
 }
 
 .clay {

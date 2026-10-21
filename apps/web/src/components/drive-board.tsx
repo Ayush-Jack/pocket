@@ -101,7 +101,7 @@ export function DriveBoard({
       ) : (
         <>
           {media.length > 0 ? (
-            <ul className="columns-2 gap-3 md:columns-3 xl:columns-4">
+            <ul className="columns-1 gap-3 min-[420px]:columns-2 md:columns-3 xl:columns-4">
               {media.map((file) => (
                 <MediaTile key={file.id} file={file} onOpen={() => setOpened(file)} />
               ))}
@@ -199,7 +199,7 @@ function UploadForm() {
       }}
       className="clay flex w-full min-w-0 flex-col gap-3 px-3 py-3 sm:px-4"
     >
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <label className="min-w-0 flex-1 text-sm">
           <span className="sr-only">Choose files</span>
           <input
@@ -207,7 +207,7 @@ function UploadForm() {
             type="file"
             multiple
             data-upload-input=""
-            className="w-full max-w-full text-base"
+            className="w-full max-w-full text-sm file:mr-3 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-3.5 file:py-1.5 file:font-[family-name:var(--font-mono)] file:text-xs file:font-medium file:text-[var(--ink)] sm:text-base"
             onChange={(event) => {
               addChosen(Array.from(event.target.files ?? []), event.target)
             }}

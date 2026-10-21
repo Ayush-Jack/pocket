@@ -229,170 +229,377 @@ export function LandingChoreography() {
   return null
 }
 
-const HERO_GALLERY_ITEMS = [
+const POCKET_FOLDER_ITEMS = [
   {
-    id: 'hg-travel',
-    category: 'Travel',
-    title: 'Kyoto Bamboo Trail',
-    name: 'kyoto-bamboo-morning.jpg',
-    size: '18.4 MB',
-    msg: 'msg #4812',
-    kind: 'Photo',
-    tint: 'var(--lilac)',
-    imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=80',
+    id: 'photos',
+    label: 'Photos',
+    ext: 'JPG',
+    name: 'Kyoto_Trip.jpg',
+    size: '18 MB',
+    tag: 'Photos',
+    status: 'Saved Messages · Photos',
+    sheetBg: 'linear-gradient(155deg, #ffffff 0%, #f3f0ff 55%, #e5dffb 100%)',
+    badgeBg: '#e7e4f8',
+    accent: '#6c56cf',
+    fanX: -52,
+    fanY: -50,
+    fanRot: -10,
+    idleX: -34,
+    idleY: -20,
+    idleRot: -5,
   },
   {
-    id: 'hg-food',
-    category: 'Food',
-    title: 'Tokyo Ramen Bowl',
-    name: 'artisan-ramen-tokyo.jpg',
-    size: '12.8 MB',
-    msg: 'msg #4815',
-    kind: 'Photo',
-    tint: 'var(--peach)',
-    imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80',
+    id: 'docs',
+    label: 'Documents',
+    ext: 'PDF',
+    name: 'Project_Notes.pdf',
+    size: '14 MB',
+    tag: 'Documents',
+    status: 'Saved Messages · Documents',
+    sheetBg: 'linear-gradient(155deg, #ffffff 0%, #eef3ff 55%, #dce5ff 100%)',
+    badgeBg: '#d9e0ff',
+    accent: '#4a62d8',
+    fanX: 0,
+    fanY: -64,
+    fanRot: 0,
+    idleX: 0,
+    idleY: -32,
+    idleRot: 0,
   },
   {
-    id: 'hg-nature',
-    category: 'Nature',
-    title: 'Dolomites Ridge Pass',
-    name: 'dolomites-ridge-fpv.mp4',
-    size: '412.0 MB',
-    msg: 'msg #4819',
-    kind: 'Video · 01:48',
-    tint: 'var(--mint)',
-    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 'hg-arch',
-    category: 'Architecture',
-    title: 'Nordic Minimal Cabin',
-    name: 'nordic-interior-study.jpg',
-    size: '14.2 MB',
-    msg: 'msg #4831',
-    kind: 'Photo',
-    tint: 'var(--accent)',
-    imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=900&q=80',
+    id: 'videos',
+    label: 'Videos',
+    ext: 'MP4',
+    name: 'Mountain_Reel.mp4',
+    size: '412 MB',
+    tag: 'Videos',
+    status: 'Saved Messages · Videos',
+    sheetBg: 'linear-gradient(155deg, #ffffff 0%, #ebf9f3 55%, #d6f0e5 100%)',
+    badgeBg: '#ddefe8',
+    accent: '#2e8b67',
+    fanX: 52,
+    fanY: -50,
+    fanRot: 10,
+    idleX: 34,
+    idleY: -20,
+    idleRot: 5,
   },
 ] as const
 
-export function HeroFlightDeck() {
-  const [selectedItem, setSelectedItem] = useState<(typeof HERO_GALLERY_ITEMS)[number]>(HERO_GALLERY_ITEMS[0])
-  const [syncPulse, setSyncPulse] = useState(false)
+export function HeroFileObject() {
+  const [activeIdx, setActiveIdx] = useState(1)
+  const [folderOpen, setFolderOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const targetRef = useRef({ x: 0, y: 0 })
 
-  function cycleNext() {
-    setSyncPulse(true)
-    const idx = (HERO_GALLERY_ITEMS.findIndex((i) => i.id === selectedItem.id) + 1) % HERO_GALLERY_ITEMS.length
-    setSelectedItem(HERO_GALLERY_ITEMS[idx])
-    window.setTimeout(() => setSyncPulse(false), 500)
-  }
+  const activeItem = POCKET_FOLDER_ITEMS[activeIdx]
+  const isExpanded = folderOpen || hovered
+
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    const spring = { x: 0, y: 0, vx: 0, vy: 0 }
+    let raf = 0
+    let last = performance.now()
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.032, Math.max(0.001, (now - last) / 1000))
+      last = now
+      const sub = dt / 2
+      for (let i = 0; i < 2; i += 1) {
+        const ax = -120 * (spring.x - targetRef.current.x) - 18 * spring.vx
+        spring.vx += ax * sub
+        spring.x += spring.vx * sub
+
+        const ay = -120 * (spring.y - targetRef.current.y) - 18 * spring.vy
+        spring.vy += ay * sub
+        spring.y += spring.vy * sub
+      }
+
+      const rx = -spring.y * 15
+      const ry = spring.x * 18
+      stage.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`
+      raf = window.requestAnimationFrame(tick)
+    }
+
+    raf = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(raf)
+  }, [])
 
   return (
     <div
       data-hero-reveal=""
-      data-tilt="4"
-      className="land-well clay-card-alive relative flex flex-col justify-between gap-4 overflow-hidden p-4 sm:p-6"
+      className="relative mx-auto flex w-full max-w-[336px] flex-col items-center select-none py-2 sm:max-w-[390px] lg:max-w-[420px]"
+      style={{ perspective: '1200px' }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        targetRef.current = {
+          x: (e.clientX - rect.left) / rect.width - 0.5,
+          y: (e.clientY - rect.top) / rect.height - 0.5,
+        }
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => {
+        setHovered(false)
+        targetRef.current = { x: 0, y: 0 }
+      }}
     >
-      {/* Top instrument header */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
-        <div className="clay-pill gap-2 bg-[var(--clay)] px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-[11px]">
-          <span className="relative flex h-2 w-2">
-            <span className="pulse-ring absolute inline-flex h-full w-full rounded-full bg-[#4ea885]" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#3b9874]" />
-          </span>
-          <span>SAVED MESSAGES GALLERY</span>
-        </div>
-      </div>
+      {/* Soft Pastel Clay Glow Behind the Folder */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-4 -z-10 rounded-full blur-3xl transition-all duration-500"
+        style={{
+          background:
+            'radial-gradient(circle at 50% 52%, rgba(128, 152, 248, 0.52) 0%, rgba(217, 224, 255, 0.35) 52%, transparent 74%)',
+        }}
+      />
 
-      {/* Main Featured Visual Card with Real Photography */}
-      <div className="clay relative overflow-hidden p-2.5">
-        <div className="relative h-56 w-full overflow-hidden rounded-[22px] sm:h-64">
-          <img
-            key={selectedItem.imageUrl}
-            src={selectedItem.imageUrl}
-            alt={selectedItem.title}
-            className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1f2631]/70 via-transparent to-transparent" />
-
-          <div className="absolute left-3 top-3 flex items-center gap-2">
-            <span
-              style={{ background: selectedItem.tint }}
-              className="clay-pill px-3 py-1 font-[family-name:var(--font-mono)] text-[11px] font-medium text-[var(--ink)]"
-            >
-              {selectedItem.category}
-            </span>
-            <span className="clay-pill bg-[var(--clay)]/90 px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--ink)]">
-              {selectedItem.kind}
-            </span>
-          </div>
-
-          <div className="absolute inset-x-3.5 bottom-3.5 flex items-end justify-between gap-2 text-white">
-            <div>
-              <p className="font-[family-name:var(--font-display)] text-lg font-medium leading-tight drop-shadow-xs">
-                {selectedItem.title}
-              </p>
-              <p className="font-[family-name:var(--font-mono)] text-xs text-white/85">
-                {selectedItem.name} · {selectedItem.size}
-              </p>
-            </div>
-            <span className="rounded-full bg-white/90 px-3 py-1 font-[family-name:var(--font-mono)] text-[11px] font-medium text-[var(--ink)] shadow-sm">
-              {selectedItem.msg}
-            </span>
-          </div>
-        </div>
-
-        {/* Category Photo Strip Thumbnails */}
-        <div className="mt-2.5 grid grid-cols-4 gap-2">
-          {HERO_GALLERY_ITEMS.map((item) => {
-            const active = item.id === selectedItem.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSelectedItem(item)}
-                className={`group relative overflow-hidden rounded-2xl p-1 text-left transition-all ${
-                  active ? 'bg-[var(--accent)] ring-2 ring-[#3e4a5c]/30' : 'bg-[var(--field)]/70 hover:bg-[var(--field)]'
-                }`}
-              >
-                <div className="h-12 w-full overflow-hidden rounded-xl">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.title}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                  />
-                </div>
-                <p className="mt-1 truncate px-1 font-[family-name:var(--font-display)] text-[11px] font-medium text-[var(--ink)]">
-                  {item.category}
-                </p>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Bottom interactive telemetry bar */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-[var(--clay)]/90 px-3.5 py-2.5 shadow-xs backdrop-blur-xs">
-        <div className="flex items-center gap-2.5 text-xs">
-          <img
-            src={selectedItem.imageUrl}
-            alt=""
-            className="h-7 w-7 rounded-lg object-cover"
-          />
-          <div>
-            <span className="block font-medium leading-tight text-[var(--ink)]">{selectedItem.name}</span>
-            <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
-              Saved Messages · {selectedItem.size}
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={cycleNext}
-          className="clay-press rounded-full bg-[var(--field)] px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-[11px] text-[var(--ink)]"
+      {/* 3D Sculpted Clay Folder Stage */}
+      <div
+        ref={stageRef}
+        className="relative h-[286px] w-full sm:h-[320px]"
+        style={{ transformStyle: 'preserve-3d' }}
+      >
+        {/* Floating Clay Badge — Top Right */}
+        <div
+          className="clay-pill float-slow pointer-events-none absolute right-2 top-2 z-40 gap-2 bg-[var(--clay)] px-3 py-1.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold text-[var(--ink)]"
+          style={{
+            transform: 'translateZ(64px)',
+            boxShadow:
+              '-6px -6px 14px rgba(255,255,255,0.95), 8px 12px 22px rgba(145,165,198,0.52), inset 1.5px 1.5px 3px rgba(255,255,255,0.95)',
+          }}
         >
-          {syncPulse ? 'Switched ✓' : 'Next photo →'}
-        </button>
+          <span className="h-2 w-2 rounded-full bg-[#3b9874]" />
+          <span>{activeItem.tag}</span>
+        </div>
+
+        {/* 1. BACK CLAY FOLDER BODY + MOLDED TOP-LEFT FOLDER TAB */}
+        <div
+          className="absolute inset-x-3 bottom-3 top-12 rounded-[32px] sm:inset-x-4 sm:rounded-[36px]"
+          style={{
+            transform: 'translateZ(-24px)',
+            background: 'linear-gradient(155deg, #9bb2f8 0%, #7d97ee 55%, #6682e3 100%)',
+            border: '2px solid rgba(255, 255, 255, 0.65)',
+            boxShadow:
+              '-12px -12px 26px rgba(255, 255, 255, 0.9), 22px 28px 46px rgba(112, 134, 180, 0.55), inset 4px 5px 12px rgba(255, 255, 255, 0.65), inset -6px -8px 16px rgba(68, 92, 178, 0.48)',
+          }}
+        >
+          {/* Sculpted Folder Tab rising on top-left */}
+          <div
+            className="absolute -top-7 left-4 flex h-9 w-36 items-center gap-2 rounded-t-[18px] px-3.5 sm:left-5 sm:h-10 sm:w-40 sm:rounded-t-[20px] sm:px-4"
+            style={{
+              background: 'linear-gradient(180deg, #a7bcfb 0%, #8ca5f3 100%)',
+              borderTop: '2px solid rgba(255, 255, 255, 0.78)',
+              borderLeft: '2px solid rgba(255, 255, 255, 0.7)',
+              borderRight: '2px solid rgba(255, 255, 255, 0.55)',
+              boxShadow: 'inset 2px 3px 6px rgba(255, 255, 255, 0.65)',
+            }}
+          >
+            <span className="h-2 w-2 rounded-full bg-white shadow-2xs" />
+            <span className="font-[family-name:var(--font-mono)] text-[9px] font-semibold tracking-[0.14em] text-white sm:text-[10px]">
+              POCKET DRIVE
+            </span>
+          </div>
+
+          {/* Recessed Dark-Blue Inner Pocket Cavity */}
+          <div
+            className="absolute inset-x-3 top-3 bottom-12 rounded-[24px] sm:inset-x-3.5 sm:top-3.5 sm:rounded-[28px]"
+            style={{
+              background: 'linear-gradient(180deg, #5c76d6 0%, #718be3 100%)',
+              boxShadow:
+                'inset 6px 8px 16px rgba(42, 60, 132, 0.58), inset -4px -4px 10px rgba(175, 195, 255, 0.35)',
+            }}
+          />
+        </div>
+
+        {/* 2. SCULPTED 3D CLAY FILE SHEETS TUCKED INSIDE THE FOLDER */}
+        {POCKET_FOLDER_ITEMS.map((item, idx) => {
+          const isSelected = idx === activeIdx
+          const tx = isSelected ? 0 : isExpanded ? item.fanX : item.idleX
+          const ty = isSelected ? -46 : isExpanded ? item.fanY + 12 : item.idleY + 14
+          const tz = isSelected ? 22 : idx === 1 ? 4 : -6
+          const rot = isSelected ? 0 : isExpanded ? item.fanRot : item.idleRot
+          const scale = isSelected ? 1.02 : isExpanded ? 0.93 : 0.89
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setActiveIdx(idx)
+                setFolderOpen(true)
+              }}
+              aria-label={`Select ${item.label} file ${item.name}`}
+              className="absolute left-1/2 top-11 w-[184px] -translate-x-1/2 rounded-[24px] p-3 text-left transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-[218px] sm:rounded-[26px] sm:p-3.5"
+              style={{
+                background: item.sheetBg,
+                border: '2px solid rgba(255, 255, 255, 0.96)',
+                transform: `translate3d(${tx}px, ${ty}px, ${tz}px) rotateZ(${rot}deg) scale(${scale})`,
+                zIndex: isSelected ? 25 : 14 + idx,
+                boxShadow: isSelected
+                  ? '-8px -8px 18px rgba(255, 255, 255, 0.96), 12px 18px 30px rgba(56, 74, 132, 0.34), inset 3px 3px 7px rgba(255, 255, 255, 0.98), inset -3px -4px 9px rgba(178, 194, 224, 0.45)'
+                  : '-4px -4px 10px rgba(255, 255, 255, 0.85), 8px 12px 22px rgba(56, 74, 132, 0.24), inset 2px 2px 5px rgba(255, 255, 255, 0.9)',
+              }}
+            >
+              {/* Top Row: Molded 3D Clay File Type Icon + Extension Pill */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl font-[family-name:var(--font-mono)] text-[9px] font-bold text-white shadow-xs sm:h-8 sm:w-8 sm:text-[10px]"
+                    style={{
+                      background: item.accent,
+                      boxShadow: 'inset 1.5px 1.5px 3px rgba(255,255,255,0.45)',
+                    }}
+                  >
+                    {item.ext}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-[family-name:var(--font-display)] text-xs font-semibold text-[var(--ink)]">
+                      {item.name}
+                    </p>
+                    <p className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
+                      {item.size}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tactile Molded Clay Lines on the Document Sheet */}
+              <div className="mt-2.5 space-y-1.5 rounded-2xl bg-white/70 p-2 shadow-inner sm:mt-3 sm:p-2.5">
+                <div className="flex items-center justify-between gap-1">
+                  <span
+                    className="h-2 w-14 rounded-full sm:w-16"
+                    style={{ background: item.badgeBg }}
+                  />
+                  <span className="font-[family-name:var(--font-mono)] text-[9px] font-semibold text-[var(--muted)]">
+                    {item.tag}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-[var(--field)]" />
+                <div className="h-1.5 w-3/4 rounded-full bg-[var(--field)]" />
+              </div>
+            </button>
+          )
+        })}
+
+        {/* 3. SCULPTED FRONT CLAY POCKET POUCH / FOLDER FLAP */}
+        <div
+          onClick={() => setFolderOpen((v) => !v)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setFolderOpen((v) => !v)
+            }
+          }}
+          aria-label="Open or close Pocket folder"
+          className="absolute inset-x-1.5 bottom-2 h-[170px] cursor-pointer rounded-[32px] p-3.5 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:inset-x-2 sm:h-[186px] sm:rounded-[36px] sm:p-5"
+          style={{
+            transformOrigin: '50% 100%',
+            transform: isExpanded
+              ? 'translateZ(46px) rotateX(-18deg)'
+              : 'translateZ(40px) rotateX(-5deg)',
+            background:
+              'linear-gradient(160deg, #b8cbff 0%, #98b2fc 48%, #7b98f4 100%)',
+            border: '2px solid rgba(255, 255, 255, 0.86)',
+            boxShadow:
+              '-8px -8px 20px rgba(255, 255, 255, 0.85), 16px 24px 38px rgba(86, 108, 168, 0.52), inset 4px 6px 12px rgba(255, 255, 255, 0.82), inset -6px -8px 16px rgba(66, 88, 172, 0.45)',
+            zIndex: 30,
+          }}
+        >
+          {/* Sculpted Top Pocket Scoop / Lip Indent */}
+          <div
+            aria-hidden="true"
+            className="mx-auto -mt-0.5 mb-2.5 h-2 w-20 rounded-full sm:mb-3 sm:h-2.5 sm:w-24"
+            style={{
+              background: 'rgba(72, 95, 180, 0.32)',
+              boxShadow:
+                'inset 1px 2px 4px rgba(45, 64, 138, 0.45), 0 1.5px 0 rgba(255, 255, 255, 0.78)',
+            }}
+          />
+
+          <div className="flex h-[calc(100%-1.1rem)] flex-col justify-between">
+            {/* Center Folder Identity: 3D White Clay Paper Plane + Active File Status */}
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+                {/* 3D White Clay Paper-Plane Badge (matching Pocket Logo) */}
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl sm:h-12 sm:w-12"
+                  style={{
+                    background: 'linear-gradient(145deg, #ffffff 0%, #eef2ff 100%)',
+                    boxShadow:
+                      '-3px -3px 8px rgba(255, 255, 255, 0.9), 6px 8px 16px rgba(58, 78, 152, 0.38), inset 2px 2px 4px rgba(255, 255, 255, 0.95), inset -2px -2px 5px rgba(178, 194, 232, 0.5)',
+                  }}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    className="h-5 w-5 text-[#4d63dc] sm:h-6 sm:w-6"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M21.2 4.4 2.9 11.5c-.8.3-.8 1.4 0 1.7l4.7 1.7 1.8 5.3c.3.8 1.3 1 1.9.3l2.7-3.1 4.6 3.4c.7.5 1.7.1 1.9-.8l2.2-14.3c.2-.9-.7-1.6-1.5-1.3Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-[family-name:var(--font-mono)] text-[9px] font-semibold uppercase tracking-[0.12em] text-white/85 sm:text-[10px]">
+                    {activeItem.status}
+                  </p>
+                  <p className="truncate font-[family-name:var(--font-display)] text-base font-semibold leading-tight text-white drop-shadow-2xs sm:text-lg">
+                    {activeItem.name}
+                  </p>
+                </div>
+              </div>
+
+              <span className="shrink-0 whitespace-nowrap rounded-full bg-white/90 px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-bold text-[#3e4a5c] shadow-sm sm:px-3">
+                {activeItem.size}
+              </span>
+            </div>
+
+            {/* Interactive Folder File-Type Tabs on the Front Flap */}
+            <div
+              className="flex items-center gap-1 rounded-2xl p-1 sm:gap-1.5 sm:p-1.5"
+              style={{
+                background: 'rgba(68, 90, 174, 0.28)',
+                boxShadow:
+                  'inset 3px 4px 8px rgba(45, 64, 138, 0.38), 0 1px 0 rgba(255, 255, 255, 0.45)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+              role="tablist"
+              aria-label="Pocket folder categories"
+            >
+              {POCKET_FOLDER_ITEMS.map((item, idx) => {
+                const active = idx === activeIdx
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => {
+                      setActiveIdx(idx)
+                      setFolderOpen(true)
+                    }}
+                    className={`flex-1 rounded-xl py-1.5 font-[family-name:var(--font-mono)] text-[9px] font-semibold uppercase tracking-[0.08em] transition-all sm:text-[10px] sm:tracking-[0.1em] ${
+                      active
+                        ? 'bg-white text-[#3e4a5c] shadow-sm'
+                        : 'text-white/85 hover:bg-white/15 hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -982,40 +1189,23 @@ function PocketFlipCard({
 }
 
 export function WorksInteractiveSection() {
-  const [chatMode, setChatMode] = useState<'telegram' | 'pocket'>('telegram')
-  const [indexFilter, setIndexFilter] = useState<'all' | 'photo' | 'video' | 'doc'>('all')
-  const [inspectLayer, setInspectLayer] = useState<'browser' | 'server'>('browser')
-
   const indexedRows = [
     {
-      name: 'kyoto-bamboo-morning.jpg',
-      category: 'Travel',
-      size: '18.4 MB',
-      type: 'photo',
+      name: 'Kyoto trip photos.jpg',
+      kind: 'Photo',
       img: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=240&q=75',
     },
     {
-      name: 'artisan-ramen-tokyo.jpg',
-      category: 'Food',
-      size: '12.8 MB',
-      type: 'photo',
-      img: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=240&q=75',
-    },
-    {
-      name: 'dolomites-ridge-fpv.mp4',
-      category: 'Travel',
-      size: '412 MB',
-      type: 'video',
+      name: 'Mountain reel.mp4',
+      kind: 'Video',
       img: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=240&q=75',
     },
     {
-      name: 'nordic-architecture-zine.pdf',
-      category: 'Architecture',
-      size: '14.2 MB',
-      type: 'doc',
+      name: 'Project notes.pdf',
+      kind: 'Document',
       img: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=240&q=75',
     },
-  ].filter((r) => indexFilter === 'all' || r.type === indexFilter)
+  ]
 
   return (
     <section
@@ -1027,250 +1217,231 @@ export function WorksInteractiveSection() {
           <p className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
             HOW POCKET WORKS
           </p>
-          <h2 className="mt-2.5 font-[family-name:var(--font-display)] text-3xl font-medium leading-none text-[var(--ink)] sm:text-5xl">
-            Three parts. One account.
+          <h2 className="mt-2.5 font-[family-name:var(--font-display)] text-3xl font-medium leading-none tracking-[-0.02em] text-[var(--ink)] sm:text-5xl">
+            Your Telegram. Your files. <span className="italic">All in one place.</span>
           </h2>
         </div>
+        <p className="max-w-md text-sm leading-relaxed text-[var(--muted)] sm:text-base">
+          Find, organize, and download your files without digging through endless Telegram messages.
+        </p>
       </div>
 
-      <ul className="mt-8 grid items-stretch gap-5 md:grid-cols-3">
-        <li data-reveal-item="" className="min-h-[340px]">
+      <ul className="mt-8 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {/* Card 01 — Connect */}
+        <li data-reveal-item="" className="min-h-[350px] min-w-0">
           <PocketFlipCard
             back={
-              <div className="clay flex h-full flex-col items-center justify-center gap-3 bg-[var(--accent)] p-6 text-center">
+              <div className="clay flex h-full flex-col justify-between bg-[var(--accent)] p-6 text-left">
                 <p className="font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
                   01 · CONNECT
                 </p>
-                <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">Your Telegram</h3>
-                <p className="max-w-[16rem] text-sm text-[var(--muted)]">
-                  Sign in once. The session stays on the server.
+                <div>
+                  <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">
+                    Use the account you already have.
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]/80">
+                    Sign in with your Telegram phone number and confirmation code. No new storage account to set up.
+                  </p>
+                </div>
+                <p className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--ink)]/75">
+                  Tap to flip back
                 </p>
               </div>
             }
           >
-            <div className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="clay-pill h-12 w-12 justify-center bg-[var(--accent)]">
-                  <KeyIcon />
-                </span>
-                <span className="clay-pill bg-[var(--clay)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
-                  01 · CONNECT
-                </span>
-              </div>
-              <div className="clay-well-sm flex p-1 font-[family-name:var(--font-mono)] text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setInspectLayer('browser')}
-                  className={`rounded-full px-2.5 py-1 transition-all ${
-                    inspectLayer === 'browser' ? 'bg-[var(--clay)] text-[var(--ink)] shadow-xs' : 'text-[var(--muted)]'
-                  }`}
-                >
-                  Browser
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInspectLayer('server')}
-                  className={`rounded-full px-2.5 py-1 transition-all ${
-                    inspectLayer === 'server' ? 'bg-[var(--clay)] text-[var(--ink)] shadow-xs' : 'text-[var(--muted)]'
-                  }`}
-                >
-                  Server
-                </button>
-              </div>
-            </div>
+            <div
+              className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6"
+              style={{
+                background: 'linear-gradient(155deg, #e3e9ff 0%, #d2dcff 55%, #bccaff 100%)',
+                border: '1.5px solid rgba(255, 255, 255, 0.85)',
+              }}
+            >
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="clay-pill shrink-0 bg-[var(--clay)] px-3 py-1.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
+                    01 · CONNECT
+                  </span>
+                </div>
 
-            <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">Your Telegram</h3>
-              <p className="mt-2 text-[var(--muted)]">Sign in once. The session stays on the server.</p>
-            </div>
-          </div>
+                <div>
+                  <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">
+                    Connect your Telegram
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]/80">
+                    Sign in with your Telegram account and let Pocket organize your files in one convenient place.
+                  </p>
+                </div>
+              </div>
 
-          {/* Interactive Micro-Instrument */}
-          <div className="clay-well-sm p-3.5 font-[family-name:var(--font-mono)] text-xs">
-            {inspectLayer === 'browser' ? (
-              <div className="rounded-2xl bg-[var(--mint)] p-3">
-                <p className="text-[10px] text-[var(--muted)]">BROWSER STORAGE AUDIT</p>
-                <p className="mt-1 font-medium text-[var(--ink)]">0 Telegram keys in browser</p>
-                <p className="mt-0.5 text-[11px] text-[var(--muted)]">Only an httpOnly Pocket cookie</p>
+              {/* Visual: Simple Telegram -> Pocket bridge */}
+              <div className="clay-well-sm flex items-center justify-between gap-3 bg-white/60 px-4 py-3.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="clay-pill flex h-10 w-10 shrink-0 items-center justify-center bg-[#5569dc] text-white">
+                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+                      <path
+                        d="M21.2 4.4 2.9 11.5c-.8.3-.8 1.4 0 1.7l4.7 1.7 1.8 5.3c.3.8 1.3 1 1.9.3l2.7-3.1 4.6 3.4c.7.5 1.7.1 1.9-.8l2.2-14.3c.2-.9-.7-1.6-1.5-1.3Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--ink)]">Telegram</p>
+                    <p className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">Your account</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[var(--muted)]" aria-hidden="true">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#5569dc]/50" />
+                  <span className="h-0.5 w-6 rounded-full bg-[#5569dc]/40" />
+                  <span className="text-xs font-semibold text-[#5569dc]">→</span>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <Logo className="h-10 w-10 shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--ink)]">Pocket</p>
+                    <p className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">Your drive</p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="rounded-2xl bg-[var(--accent)] p-3">
-                <p className="text-[10px] text-[var(--muted)]">POCKET SERVER ENGINE</p>
-                <p className="mt-1 font-medium text-[var(--ink)]">Sealed TDLib session</p>
-                <p className="mt-0.5 text-[11px] text-[var(--muted)]">Talks directly to Telegram MTProto</p>
-              </div>
-            )}
-          </div>
             </div>
           </PocketFlipCard>
         </li>
 
-        <li data-reveal-item="" className="min-h-[340px]">
+        {/* Card 02 — Organize */}
+        <li data-reveal-item="" className="min-h-[350px] min-w-0">
           <PocketFlipCard
             back={
-              <div className="clay flex h-full flex-col items-center justify-center gap-3 bg-[var(--lilac)] p-6 text-center">
+              <div className="clay flex h-full flex-col justify-between bg-[var(--lilac)] p-6 text-left">
                 <p className="font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
-                  02 · STORE
+                  02 · ORGANIZE
                 </p>
-                <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">Saved Messages</h3>
-                <p className="max-w-[16rem] text-sm text-[var(--muted)]">Your files stay in Saved Messages.</p>
+                <div>
+                  <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">
+                    Turn scattered messages into a library.
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]/80">
+                    Nothing moves to a separate cloud. Your files stay in Saved Messages while Pocket gives them a clean home.
+                  </p>
+                </div>
+                <p className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--ink)]/75">
+                  Tap to flip back
+                </p>
               </div>
             }
           >
-            <div className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="clay-pill h-12 w-12 justify-center bg-[var(--lilac)]">
-                  <ChatIcon />
-                </span>
-                <span className="clay-pill bg-[var(--clay)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
-                  02 · STORE
-                </span>
-              </div>
-              <div className="clay-well-sm flex p-1 font-[family-name:var(--font-mono)] text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setChatMode('telegram')}
-                  className={`rounded-full px-2.5 py-1 transition-all ${
-                    chatMode === 'telegram' ? 'bg-[var(--clay)] text-[var(--ink)] shadow-xs' : 'text-[var(--muted)]'
-                  }`}
-                >
-                  Telegram
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChatMode('pocket')}
-                  className={`rounded-full px-2.5 py-1 transition-all ${
-                    chatMode === 'pocket' ? 'bg-[var(--clay)] text-[var(--ink)] shadow-xs' : 'text-[var(--muted)]'
-                  }`}
-                >
-                  Pocket
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">Saved Messages</h3>
-              <p className="mt-2 text-[var(--muted)]">Your files stay in Saved Messages.</p>
-            </div>
-          </div>
-
-          {/* Interactive Micro-Instrument with Real Photo */}
-          <div className="clay-well-sm p-3.5">
-            {chatMode === 'telegram' ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
-                  <span>SAVED MESSAGES THREAD</span>
-                  <span>msg #4815 · ✓✓</span>
+            <div
+              className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6"
+              style={{
+                background: 'linear-gradient(155deg, #ede9fb 0%, #dfd8f8 55%, #cfc4f4 100%)',
+                border: '1.5px solid rgba(255, 255, 255, 0.85)',
+              }}
+            >
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="clay-pill shrink-0 bg-[var(--clay)] px-3 py-1.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
+                    02 · ORGANIZE
+                  </span>
                 </div>
-                <div className="flex items-center gap-3 rounded-2xl bg-[var(--clay)] p-2.5 shadow-xs">
+
+                <div>
+                  <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">
+                    Already in Telegram? Already yours.
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]/80">
+                    Your files stay in your own Telegram Saved Messages. Pocket gives them a cleaner, easier way to access.
+                  </p>
+                </div>
+              </div>
+
+              {/* Visual: Chat message -> Clean file card */}
+              <div className="clay-well-sm flex items-center justify-between gap-3 bg-white/60 p-3">
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl bg-[var(--clay)] p-2.5 shadow-xs flex-1">
                   <img
                     src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=240&q=75"
-                    alt="Ramen bowl"
-                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                    alt="Saved photo"
+                    className="h-11 w-11 shrink-0 rounded-xl object-cover"
                   />
                   <div className="min-w-0">
-                    <p className="truncate font-[family-name:var(--font-display)] text-xs font-medium">
-                      artisan-ramen-tokyo.jpg
+                    <p className="truncate text-xs font-semibold text-[var(--ink)]">
+                      Tokyo dinner.jpg
                     </p>
                     <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
-                      12.8 MB · Food · Telegram cloud
+                      Saved Messages → Picture Card
                     </p>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--lilac)] p-2.5">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <img
-                    src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=240&q=75"
-                    alt="Ramen bowl"
-                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                  />
-                  <div className="min-w-0">
-                    <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
-                      POCKET PICTURE CARD
-                    </span>
-                    <p className="truncate font-[family-name:var(--font-display)] text-xs font-medium">
-                      artisan-ramen-tokyo.jpg
-                    </p>
-                  </div>
-                </div>
-                <span className="clay-pill shrink-0 bg-[var(--clay)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px]">
-                  Same photo
+                <span className="clay-pill shrink-0 bg-[var(--lilac)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-medium text-[var(--ink)]">
+                  Organized
                 </span>
               </div>
-            )}
-          </div>
             </div>
           </PocketFlipCard>
         </li>
 
-        <li data-reveal-item="" className="min-h-[340px]">
+        {/* Card 03 — Access */}
+        <li data-reveal-item="" className="min-h-[350px] min-w-0 md:col-span-2 lg:col-span-1">
           <PocketFlipCard
             back={
-              <div className="clay flex h-full flex-col items-center justify-center gap-3 bg-[var(--mint)] p-6 text-center">
+              <div className="clay flex h-full flex-col justify-between bg-[var(--mint)] p-6 text-left">
                 <p className="font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
-                  03 · STREAM
+                  03 · ACCESS
                 </p>
-                <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">The list</h3>
-                <p className="max-w-[16rem] text-sm text-[var(--muted)]">Find it. Open it. Download it.</p>
+                <div>
+                  <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">
+                    Find, preview, and download with ease.
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]/80">
+                    Photos, videos, and documents each get their own dedicated view—ready whenever you need them.
+                  </p>
+                </div>
+                <p className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--ink)]/75">
+                  Tap to flip back
+                </p>
               </div>
             }
           >
-            <div className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="clay-pill h-12 w-12 justify-center bg-[var(--mint)]">
-                  <ListIcon />
-                </span>
-                <span className="clay-pill bg-[var(--clay)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
-                  03 · STREAM
-                </span>
+            <div
+              className="clay flex h-full flex-col justify-between gap-5 p-5 sm:p-6"
+              style={{
+                background: 'linear-gradient(155deg, #e1f4ec 0%, #ccece0 55%, #b5e2d1 100%)',
+                border: '1.5px solid rgba(255, 255, 255, 0.85)',
+              }}
+            >
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="clay-pill shrink-0 bg-[var(--clay)] px-3 py-1.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-[0.14em] text-[var(--ink)]">
+                    03 · ACCESS
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">
+                    Find anything, faster.
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]/80">
+                    Browse your photos, videos, and documents in one organized view. Preview what you need and download it when you want.
+                  </p>
+                </div>
               </div>
-              <div className="flex gap-1 font-[family-name:var(--font-mono)] text-[10px]">
-                {(['all', 'photo', 'video', 'doc'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setIndexFilter(t)}
-                    className={`rounded-full px-2 py-1 capitalize transition-all ${
-                      indexFilter === t ? 'bg-[var(--accent)] text-[var(--ink)]' : 'bg-[var(--field)] text-[var(--muted)]'
-                    }`}
+
+              {/* Visual: Clean file list with Photo, Video, and Document thumbnails */}
+              <div className="clay-well-sm flex flex-col gap-1.5 bg-white/60 p-3">
+                {indexedRows.map((row) => (
+                  <div
+                    key={row.name}
+                    className="flex items-center justify-between gap-2 rounded-xl bg-[var(--clay)] px-2.5 py-1.5 text-xs shadow-2xs"
                   >
-                    {t}
-                  </button>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <img src={row.img} alt={row.name} className="h-7 w-7 shrink-0 rounded-lg object-cover" />
+                      <span className="truncate font-medium text-[var(--ink)]">{row.name}</span>
+                    </div>
+                    <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
+                      {row.kind}
+                    </span>
+                  </div>
                 ))}
               </div>
-            </div>
-
-            <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl font-medium">The list</h3>
-              <p className="mt-2 text-[var(--muted)]">Find it. Open it. Download it.</p>
-            </div>
-          </div>
-
-          {/* Interactive Micro-Instrument with Real Thumbnails */}
-          <div className="clay-well-sm flex flex-col gap-1.5 p-3">
-            {indexedRows.map((row) => (
-              <div
-                key={row.name}
-                className="flex items-center justify-between gap-2 rounded-xl bg-[var(--clay)] px-2.5 py-1.5 text-xs shadow-2xs"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <img src={row.img} alt={row.name} className="h-7 w-7 shrink-0 rounded-lg object-cover" />
-                  <span className="truncate font-medium">{row.name}</span>
-                </div>
-                <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
-                  {row.size}
-                </span>
-              </div>
-            ))}
-          </div>
             </div>
           </PocketFlipCard>
         </li>
@@ -1292,9 +1463,9 @@ type FramerStackCard = {
 
 const FRAMER_FEATURE_CARDS: FramerStackCard[] = [
   {
-    title: 'Upload',
-    description: 'One file or a set, saved into Telegram.',
-    tag: 'Sequential Queue',
+    title: 'Send one file, or a folder full',
+    description: 'Pocket queues them one after another into Saved Messages.',
+    tag: 'Upload',
     cardGradient: 'linear-gradient(145deg, #f9fbff 0%, #eff3ff 58%, #e2e9ff 100%)',
     pillBg: 'var(--accent)',
     accentColor: '#5569dc',
@@ -1313,9 +1484,9 @@ const FRAMER_FEATURE_CARDS: FramerStackCard[] = [
     ],
   },
   {
-    title: 'Photos, videos, documents',
-    description: 'Photos, videos, and documents, each in its own place.',
-    tag: 'Smart Gallery',
+    title: 'Photos, videos, and documents',
+    description: 'Each kind gets its own view. Photos and videos open as picture cards.',
+    tag: 'Views',
     cardGradient: 'linear-gradient(145deg, #fcfbff 0%, #f2effc 58%, #e6e1f9 100%)',
     pillBg: 'var(--lilac)',
     accentColor: '#7b61d4',
@@ -1334,9 +1505,9 @@ const FRAMER_FEATURE_CARDS: FramerStackCard[] = [
     ],
   },
   {
-    title: 'Open and download',
-    description: 'Open any file, then stream or download it.',
-    tag: 'Direct Stream',
+    title: 'Preview in place, download original',
+    description: 'Watch videos, inspect photos, or pull the original file back down.',
+    tag: 'Stream',
     cardGradient: 'linear-gradient(145deg, #f9fdfb 0%, #ebf7f2 58%, #dcefe7 100%)',
     pillBg: 'var(--mint)',
     accentColor: '#3b9874',
@@ -1355,9 +1526,9 @@ const FRAMER_FEATURE_CARDS: FramerStackCard[] = [
     ],
   },
   {
-    title: 'Delete, in single click',
-    description: 'Delete from Saved Messages. Files over 2 GB never upload.',
-    tag: '2 GB Guard',
+    title: 'Delete once, gone from Telegram',
+    description: 'Removes the message from Saved Messages first. Anything over 2 GB stops at the door.',
+    tag: '2 GB Limit',
     cardGradient: 'linear-gradient(145deg, #fffcfa 0%, #fbf0ea 58%, #f7e4d8 100%)',
     pillBg: 'var(--peach)',
     accentColor: '#d46a43',
@@ -1428,11 +1599,11 @@ export function FeaturesInteractiveSection() {
       const rect = container.getBoundingClientRect()
       const scrollable = Math.max(1, rect.height - window.innerHeight)
       const raw = Math.min(1, Math.max(0, -rect.top / scrollable))
-      // Finish all 4 card transitions by 78% of the sticky scroll so Card 04 holds cleanly before unsticking
-      return Math.min(1, raw / 0.78)
+      // Finish all 4 card transitions by 82% of the sticky scroll so Card 04 still rests before unsticking
+      return Math.min(1, raw / 0.82)
     }
 
-    // Exact Framer spring parameters (smoothing = 1 -> stiffness: 40, damping: 42, mass: 0.45)
+    // Quicker than the old overdamped spring, still eased so a flip does not snap
     let scrollPos = getScrollProgress()
     let scrollVel = 0
     let cursorX = 0
@@ -1550,7 +1721,7 @@ export function FeaturesInteractiveSection() {
       const steps = 2
       const subDt = dt / steps
       for (let i = 0; i < steps; i += 1) {
-        const scrollForce = -40 * (scrollPos - targetScroll) - 42 * scrollVel
+        const scrollForce = -110 * (scrollPos - targetScroll) - 34 * scrollVel
         scrollVel += (scrollForce / 0.45) * subDt
         scrollPos += scrollVel * subDt
 
@@ -1581,7 +1752,7 @@ export function FeaturesInteractiveSection() {
     <div
       ref={containerRef}
       style={{
-        height: '450vh',
+        height: '340vh',
         width: '100%',
         position: 'relative',
         zIndex: 20,
@@ -1602,14 +1773,14 @@ export function FeaturesInteractiveSection() {
         style={{
           position: 'sticky',
           top: 0,
-          height: '100vh',
+          height: '100svh',
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'flex-start',
-          paddingTop: 'clamp(92px, 11vh, 116px)',
-          paddingBottom: 'clamp(14px, 3.5vh, 44px)',
+          paddingTop: 'clamp(96px, 12vh, 120px)',
+          paddingBottom: 'clamp(12px, 3vh, 40px)',
           boxSizing: 'border-box',
           perspective: '1600px',
           overflow: 'hidden',
@@ -1622,7 +1793,7 @@ export function FeaturesInteractiveSection() {
           ref={glowRef}
           style={{
             position: 'absolute',
-            inset: '-15%',
+            inset: '0',
             background: 'radial-gradient(circle at 50% 54%, rgba(155, 173, 245, 0.65) 0%, transparent 62%)',
             pointerEvents: 'none',
             zIndex: 0,
@@ -1635,7 +1806,7 @@ export function FeaturesInteractiveSection() {
 
         <div className="relative z-10 my-auto flex w-full flex-col items-center">
           {/* Section Eyebrow & Heading matching LIVE PRODUCT SANDBOX style */}
-          <div className="relative z-20 mx-auto mb-4 w-full max-w-6xl shrink-0 px-4 sm:mb-6 sm:px-8">
+          <div className="relative z-20 mx-auto mb-3 w-full max-w-6xl shrink-0 px-4 sm:mb-6 sm:px-8">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 <p className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
@@ -1643,9 +1814,9 @@ export function FeaturesInteractiveSection() {
                 </p>
                 <h2
                   data-flight-features=""
-                  className="mt-2.5 font-[family-name:var(--font-display)] text-3xl font-medium leading-none text-[var(--ink)] sm:text-5xl"
+                  className="mt-2 font-[family-name:var(--font-display)] text-3xl font-medium leading-none tracking-[-0.02em] text-[var(--ink)] sm:mt-2.5 sm:text-5xl"
                 >
-                  What you can do.
+                  Built for the files <span className="italic">you actually keep</span>.
                 </h2>
               </div>
             </div>
@@ -1655,8 +1826,8 @@ export function FeaturesInteractiveSection() {
           <div
             style={{
               position: 'relative',
-              width: 'min(548px, calc(100vw - 32px))',
-              height: 'clamp(190px, calc(100vh - 215px), 375px)',
+              width: 'min(548px, calc(100vw - 28px))',
+              height: 'clamp(235px, calc(100svh - 210px), 380px)',
               flexShrink: 0,
               perspective: '1600px',
               transformStyle: 'preserve-3d',
@@ -1675,10 +1846,10 @@ export function FeaturesInteractiveSection() {
                   left: 0,
                   width: '100%',
                   height: '100%',
-                  borderRadius: '32px',
+                  borderRadius: '28px',
                   background: card.cardGradient,
                   border: '1.5px solid rgba(255, 255, 255, 0.92)',
-                  padding: 'clamp(18px, 4%, 36px)',
+                  padding: 'clamp(16px, 4%, 36px)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
@@ -1797,12 +1968,12 @@ export function FeaturesInteractiveSection() {
                     ref={(el) => {
                       photosRefs.current[t] = el
                     }}
-                    className="mt-2.5 grid grid-cols-2 gap-2.5 sm:mt-3.5"
+                    className="mt-2 grid grid-cols-2 gap-1.5 sm:mt-3.5 sm:gap-2.5"
                   >
                     {card.photos.map((photo) => (
                       <div
                         key={photo.label}
-                        className="clay-well-sm flex items-center gap-2.5 px-2.5 py-2"
+                        className="clay-well-sm flex min-w-0 items-center gap-1.5 px-2 py-1.5 sm:gap-2.5 sm:px-2.5 sm:py-2"
                         style={{
                           background: 'rgba(231, 238, 246, 0.78)',
                           border: '1px solid rgba(255, 255, 255, 0.82)',
@@ -1811,13 +1982,13 @@ export function FeaturesInteractiveSection() {
                         <img
                           src={photo.src}
                           alt={photo.label}
-                          className="h-8 w-10 shrink-0 rounded-xl border border-white/90 object-cover shadow-xs sm:h-10 sm:w-12"
+                          className="h-7 w-8 shrink-0 rounded-lg border border-white/90 object-cover shadow-xs sm:h-10 sm:w-12 sm:rounded-xl"
                         />
                         <div className="min-w-0">
-                          <p className="truncate font-[family-name:var(--font-display)] text-xs font-semibold text-[var(--ink)]">
+                          <p className="truncate font-[family-name:var(--font-display)] text-[11px] font-semibold text-[var(--ink)] sm:text-xs">
                             {photo.label}
                           </p>
-                          <p className="truncate font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
+                          <p className="truncate font-[family-name:var(--font-mono)] text-[9px] text-[var(--muted)] sm:text-[10px]">
                             {photo.meta}
                           </p>
                         </div>
@@ -1847,15 +2018,14 @@ export function FeaturesInteractiveSection() {
           </div>
         </div>
 
-        {/* Right Side Claymorphic Progress Pill */}
+        {/* Right Side Claymorphic Progress Pill (hidden on small phones so it never overlaps cards) */}
         <div
-          className="clay-pill bg-[var(--clay)]/90 px-2.5 py-3.5"
+          className="clay-pill hidden bg-[var(--clay)]/90 px-2.5 py-3.5 md:flex"
           style={{
             position: 'absolute',
             top: '50%',
             right: '24px',
             transform: 'translateY(-50%)',
-            display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '12px',
@@ -1887,61 +2057,49 @@ const HOW_TO_USE_STEPS = [
   {
     step: '01',
     title: 'Open Pocket',
-   // description: 'Start on the Pocket portal on desktop or mobile before entering your personal drive.',
     position: 'bottom' as const,
     tint: 'var(--accent)',
     photo: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=240&q=75',
-    // tag: 'Web & Mobile',
     icon: StepGlobeIcon,
   },
   {
     step: '02',
-    title: 'Telegram Sign-In',
-    // description: 'Register or log in safely using your Telegram phone number, OTP code, and 2FA password.',
+    title: 'Sign in with Telegram',
     position: 'top' as const,
     tint: 'var(--lilac)',
     photo: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=240&q=75',
-    // tag: 'Server-Sealed TDLib',
     icon: StepLoginIcon,
   },
   {
     step: '03',
-    title: 'Choose Files',
-    // description: 'Pick Food, Travel, Cinema, or Document files up to 2 GB each into your staging list.',
+    title: 'Pick your files',
     position: 'bottom' as const,
     tint: 'var(--peach)',
     photo: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=240&q=75',
-    // tag: '2 GB Pre-Check',
     icon: StepSelectIcon,
   },
   {
     step: '04',
-    title: 'Saved Messages Sync',
-    // description: 'Pocket uploads each file one after another directly into your own Telegram Saved Messages.',
+    title: 'Sent to Saved Messages',
     position: 'top' as const,
     tint: 'var(--mint)',
     photo: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=240&q=75',
-    // tag: 'Sequential Queue',
     icon: StepSyncIcon,
   },
   {
     step: '05',
-    title: 'Picture Card Gallery',
-    // description: 'Photos and videos automatically open as rich picture cards organized by category.',
+    title: 'Sorted by kind',
     position: 'bottom' as const,
     tint: 'var(--lilac)',
     photo: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=240&q=75',
-    // tag: 'Photos · Videos · Docs',
     icon: StepCameraIcon,
   },
   {
     step: '06',
-    title: 'Stream & Manage',
-    // description: 'Open any item to inspect its Telegram message ID, stream or download it, or delete it.',
+    title: 'Open, download, or delete',
     position: 'top' as const,
     tint: 'var(--accent)',
     photo: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=240&q=75',
-    // tag: 'Direct from Telegram',
     icon: StepCheckIcon,
   },
 ]
@@ -2024,19 +2182,32 @@ export function InteractiveStepsList() {
       ScrollTrigger.refresh()
     }, triggerEl)
 
-    return () => ctx.revert()
+    let resizeTimer = 0
+    const onResize = () => {
+      window.clearTimeout(resizeTimer)
+      resizeTimer = window.setTimeout(() => {
+        ScrollTrigger.refresh()
+      }, 120)
+    }
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      window.clearTimeout(resizeTimer)
+      window.removeEventListener('resize', onResize)
+      ctx.revert()
+    }
   }, [])
 
   return (
-    <div className="relative z-10 pt-16 sm:pt-24">
-      <div ref={triggerRef} className="ambient-field relative z-10 overflow-hidden select-none">
+    <div className="relative z-10 w-full overflow-x-clip pt-16 sm:pt-24">
+      <div ref={triggerRef} className="ambient-field relative z-10 w-full max-w-full overflow-hidden select-none">
         <section
           id="steps"
           style={{
-            paddingTop: 'clamp(92px, 11vh, 116px)',
+            paddingTop: 'clamp(96px, 12vh, 120px)',
             paddingBottom: 'clamp(10px, 2.5vh, 32px)',
           }}
-          className="relative flex h-screen w-full scroll-mt-20 flex-col items-center justify-start overflow-hidden"
+          className="relative flex h-svh w-full scroll-mt-20 flex-col items-center justify-start overflow-hidden"
         >
           <div className="my-auto mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
             {/* Header matching LIVE PRODUCT SANDBOX section style */}
@@ -2049,8 +2220,8 @@ export function InteractiveStepsList() {
                   <p className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
                     HOW TO USE POCKET
                   </p>
-                  <h2 className="mt-2.5 font-[family-name:var(--font-display)] text-3xl font-medium leading-none text-[var(--ink)] sm:text-5xl">
-                    How to use Pocket.
+                  <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-medium leading-none tracking-[-0.02em] text-[var(--ink)] sm:mt-2.5 sm:text-5xl">
+                    From sign-in <span className="italic">to your first file</span>.
                   </h2>
                 </div>
               </div>
@@ -2060,7 +2231,7 @@ export function InteractiveStepsList() {
             <div ref={viewportRef} className="relative w-full overflow-hidden py-1 sm:py-3">
               <div
                 ref={trackRef}
-                className="relative z-10 flex w-max items-center space-x-12 pl-4 pr-48 sm:space-x-20 sm:pl-12 sm:pr-64 md:space-x-28 md:pl-20 md:pr-80"
+                className="relative z-10 flex w-max items-center space-x-8 pl-2 pr-24 sm:space-x-16 sm:pl-10 sm:pr-56 md:space-x-24 md:pl-16 md:pr-72"
               >
                 {/* Background Dashed Wave + Animated Foreground Draw Path */}
                 <svg
@@ -2129,7 +2300,7 @@ export function InteractiveStepsList() {
                   return (
                     <div
                       key={item.step}
-                      className="group flex w-[270px] flex-shrink-0 flex-col items-center text-center sm:w-[320px] md:w-[360px]"
+                      className="group flex w-[210px] flex-shrink-0 flex-col items-center text-center sm:w-[290px] md:w-[340px]"
                     >
                       {/* Top Slot */}
                       {isTop ? (

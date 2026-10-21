@@ -22,13 +22,13 @@ export default async function SettingsPage() {
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-medium">Settings</h1>
       </div>
       <p data-rise="" className="text-[var(--muted)]">This browser is connected to the account already signed in on this computer.</p>
-      <article data-rise="" className="clay px-6 py-5">
+      <article data-rise="" className="clay px-4 py-4 sm:px-6 sm:py-5">
         <p className="text-sm text-[var(--muted)]">Telegram user</p>
-        <p className="mt-1 font-[family-name:var(--font-mono)] text-xl">{account.data.telegramUserId}</p>
+        <p className="mt-1 break-all font-[family-name:var(--font-mono)] text-lg sm:text-xl">{account.data.telegramUserId}</p>
       </article>
-      <article data-rise="" className="clay px-6 py-5">
+      <article data-rise="" className="clay px-4 py-4 sm:px-6 sm:py-5">
         <p className="text-sm text-[var(--muted)]">Folder</p>
-        <p className="mt-1 font-[family-name:var(--font-display)] text-xl">{account.data.folderName}</p>
+        <p className="mt-1 break-words font-[family-name:var(--font-display)] text-lg sm:text-xl">{account.data.folderName}</p>
       </article>
       <LogoutButton />
       <Link data-rise="" href="/drive" className="clay-pill w-fit bg-[var(--accent)] px-4 py-3 text-sm">

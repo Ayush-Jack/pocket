@@ -1,11 +1,16 @@
 import type { Metadata } from 'next'
-import { Atkinson_Hyperlegible, DM_Mono, Sora } from 'next/font/google'
+import { Fraunces, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
 import { SmoothScroll } from '@/components/smooth-scroll'
 import './globals.css'
 
-const display = Sora({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600'] })
-const body = Atkinson_Hyperlegible({ subsets: ['latin'], variable: '--font-body', weight: ['400', '700'] })
-const mono = DM_Mono({ subsets: ['latin'], variable: '--font-mono', weight: ['400'] })
+const display = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['500', '600'],
+  style: ['normal', 'italic'],
+})
+const body = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-body', weight: ['400', '500', '600'] })
+const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', weight: ['400', '500'] })
 
 export const metadata: Metadata = {
   title: 'Pocket',

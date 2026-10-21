@@ -59,15 +59,15 @@ export function LoginForm({ initial }: { initial: AuthStatus }) {
   const copy = promptFor(status)
 
   return (
-    <section className="mx-auto flex w-full max-w-md flex-col gap-5">
-      <header className="clay flex items-center gap-3 px-6 py-5">
-        <Logo className="h-14 w-14" />
-        <div>
-          <p className="font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">Your Files. Your Space</p>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-medium">Sign in</h1>
+    <section className="mx-auto flex w-full max-w-md flex-col gap-4 sm:gap-5">
+      <header className="clay flex items-center gap-3 px-4 py-4 sm:px-6 sm:py-5">
+        <Logo className="h-12 w-12 shrink-0 sm:h-14 sm:w-14" />
+        <div className="min-w-0">
+          <p className="truncate font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">Your Files. Your Space</p>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium sm:text-3xl">Sign in</h1>
         </div>
       </header>
-      <form onSubmit={submit} className="clay flex flex-col gap-4 px-6 py-5">
+      <form onSubmit={submit} className="clay flex flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5">
         <p className="text-[var(--muted)]">{copy.label}</p>
         {status.step === 'offline' || status.step === 'starting' ? null : (
           <>
