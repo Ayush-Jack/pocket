@@ -42,6 +42,12 @@ export interface RuntimeConfig {
   databaseEncryptionKey: string
 }
 
+const DEVICE_SESSION_ID = /^[a-f0-9]{32}$/
+
+export function isDeviceSessionId(sessionId: string): boolean {
+  return DEVICE_SESSION_ID.test(sessionId)
+}
+
 export function readRuntimeConfig(): RuntimeConfig {
   const apiId = Number(process.env.TELEGRAM_API_ID)
   const apiHash = process.env.TELEGRAM_API_HASH?.trim() ?? ''
@@ -52,7 +58,7 @@ export function readRuntimeConfig(): RuntimeConfig {
     )
   }
 
-  const dataDir = path.resolve(repoRoot(), process.env.TDLIB_DATA_DIR?.trim() || '.tdlib-data')
+  const dataDir = dataDirectory()
   const sessionDir = path.join(dataDir, 'sessions', 'local')
   return {
     apiId,
@@ -62,6 +68,24 @@ export function readRuntimeConfig(): RuntimeConfig {
     filesDirectory: path.join(sessionDir, 'files'),
     databaseEncryptionKey: readEncryptionKey(dataDir),
   }
+}
+
+/** One Telegram login per browser. The id is the cookie value, never a path. */
+export function sessionRuntimeConfig(sessionId: string): RuntimeConfig {
+  if (!isDeviceSessionId(sessionId)) {
+    throw new AppError('UNAUTHORIZED', 'That sign-in session was not accepted.')
+  }
+  const base = readRuntimeConfig()
+  const sessionDir = path.join(dataDirectory(), 'sessions', sessionId)
+  return {
+    ...base,
+    databaseDirectory: path.join(sessionDir, 'database'),
+    filesDirectory: path.join(sessionDir, 'files'),
+  }
+}
+
+function dataDirectory(): string {
+  return path.resolve(repoRoot(), process.env.TDLIB_DATA_DIR?.trim() || '.tdlib-data')
 }
 
 function readEncryptionKey(dataDir: string): string {

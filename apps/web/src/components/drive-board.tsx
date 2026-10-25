@@ -85,13 +85,18 @@ export function DriveBoard({
 
   return (
     <section className="flex flex-col gap-5">
-      <header data-drive-rise="" className="clay flex flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <Logo className="h-11 w-11" />
-          <div>
-            <p className="font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">Your Files. Your Space</p>
-            <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium sm:text-3xl">{title}</h1>
+      <header data-drive-rise="" className="clay flex flex-col gap-4 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Logo className="h-11 w-11 shrink-0" />
+            <div>
+              <p className="font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">Your Files. Your Space</p>
+              <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium sm:text-3xl">{title}</h1>
+            </div>
           </div>
+          <span className="clay-pill bg-[var(--field)] px-3 py-1.5 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">
+            {visible.length === 1 ? '1 item' : `${visible.length} items`}
+          </span>
         </div>
         <UploadForm />
       </header>
@@ -149,13 +154,22 @@ function fileKey(file: File): string {
   return `${file.name}:${file.size}:${file.lastModified}`
 }
 
+type QueuedStatus = 'ready' | 'saving' | 'saved' | 'failed'
+
 function UploadForm() {
   const router = useRouter()
   const [message, setMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const [chosen, setChosen] = useState<File[]>([])
+  const [fileState, setFileState] = useState<Record<string, QueuedStatus>>({})
 
-  function addChosen(list: File[], input: HTMLInputElement) {
+  function openPicker() {
+    if (saving) return
+    document.querySelector<HTMLInputElement>('[data-upload-input]')?.click()
+  }
+
+  function addChosen(list: File[], input?: HTMLInputElement) {
     const tooBig = list.filter((file) => file.size > MAX_UPLOAD_BYTES)
     const allowed = list.filter((file) => file.size > 0 && file.size <= MAX_UPLOAD_BYTES)
     if (tooBig.length > 0) {
@@ -163,6 +177,8 @@ function UploadForm() {
       const text = `These files are larger than 2 GB, so they were not added:\n${names}`
       window.alert(text)
       setMessage(text)
+    } else {
+      setMessage(null)
     }
     setChosen((current) => {
       const seen = new Set(current.map(fileKey))
@@ -175,8 +191,19 @@ function UploadForm() {
       }
       return next
     })
-    input.value = ''
+    setFileState((current) => {
+      const next = { ...current }
+      for (const file of allowed) {
+        const key = fileKey(file)
+        if (!next[key]) next[key] = 'ready'
+      }
+      return next
+    })
+    if (input) input.value = ''
   }
+
+  const totalBytes = chosen.reduce((sum, file) => sum + file.size, 0)
+  const doneCount = chosen.filter((file) => fileState[fileKey(file)] === 'saved').length
 
   return (
     <form
@@ -184,87 +211,387 @@ function UploadForm() {
         event.preventDefault()
         if (saving) return
         if (chosen.length === 0) {
-          setMessage('Choose a file to upload.')
+          openPicker()
           return
         }
         const files = chosen
         setSaving(true)
-        void uploadFiles(files, setMessage).then((saved) => {
+        void uploadFiles(files, setMessage, (key, status) => {
+          setFileState((current) => ({ ...current, [key]: status }))
+        }).then(({ saved, failedKeys }) => {
           if (saved > 0) {
-            setChosen([])
             router.refresh()
+          }
+          if (failedKeys.length === 0) {
+            setChosen([])
+            setFileState({})
+          } else {
+            const failedSet = new Set(failedKeys)
+            setChosen((current) => current.filter((file) => failedSet.has(fileKey(file))))
           }
           setSaving(false)
         })
       }}
-      className="clay flex w-full min-w-0 flex-col gap-3 px-3 py-3 sm:px-4"
+      onDragOver={(event) => {
+        event.preventDefault()
+        if (!saving) setDragging(true)
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+        setDragging(false)
+      }}
+      onDrop={(event) => {
+        event.preventDefault()
+        setDragging(false)
+        if (saving) return
+        const dropped = Array.from(event.dataTransfer.files ?? [])
+        if (dropped.length > 0) addChosen(dropped)
+      }}
+      className="flex w-full min-w-0 flex-col gap-3"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <label className="min-w-0 flex-1 text-sm">
-          <span className="sr-only">Choose files</span>
-          <input
-            name="file"
-            type="file"
-            multiple
-            data-upload-input=""
-            className="w-full max-w-full text-sm file:mr-3 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-3.5 file:py-1.5 file:font-[family-name:var(--font-mono)] file:text-xs file:font-medium file:text-[var(--ink)] sm:text-base"
-            onChange={(event) => {
-              addChosen(Array.from(event.target.files ?? []), event.target)
-            }}
-          />
-        </label>
-        <button type="submit" disabled={saving || chosen.length === 0} className="clay-press w-full rounded-2xl bg-[var(--clay)] px-4 py-2 text-sm disabled:opacity-60 sm:w-auto">
-          {saving ? 'Saving…' : chosen.length > 1 ? `Upload ${chosen.length}` : 'Upload'}
-        </button>
-      </div>
-      {chosen.length > 0 ? (
-        <ul className="flex flex-wrap gap-2">
-          {chosen.map((file) => (
-            <li key={fileKey(file)} className="clay-pill flex max-w-full items-center gap-2 bg-[var(--accent)] px-3 py-1 text-sm">
-              <span className="truncate">{file.name}</span>
+      <input
+        name="file"
+        type="file"
+        multiple
+        data-upload-input=""
+        className="sr-only"
+        onChange={(event) => {
+          addChosen(Array.from(event.target.files ?? []), event.target)
+        }}
+      />
+
+      {chosen.length === 0 ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openPicker}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              openPicker()
+            }
+          }}
+          className={`clay-well-sm flex flex-col gap-3 p-3.5 transition-all sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4 ${
+            dragging ? 'ring-2 ring-[#7c92ea] brightness-[1.02]' : 'hover:brightness-[1.01]'
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-3.5">
+            <span
+              className="clay-pill flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--ink)]"
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 16V4" />
+                <path d="m7 9 5-5 5 5" />
+                <path d="M20 16.5v1.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.5" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <p className="font-[family-name:var(--font-display)] text-base font-medium leading-snug text-[var(--ink)] sm:text-lg">
+                {dragging ? 'Drop files to add them to Pocket' : 'Drop files here, or choose from your device'}
+              </p>
+              <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] text-[var(--muted)] sm:text-xs">
+                Photos, videos, and documents · Up to 2 GB per file · Press U
+              </p>
+            </div>
+          </div>
+
+          <span className="clay-pill clay-press shrink-0 justify-center bg-[var(--clay)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm font-medium text-[var(--ink)] sm:px-5">
+            Choose files
+          </span>
+        </div>
+      ) : (
+        <div
+          className={`clay-well-sm flex flex-col gap-3.5 p-3.5 sm:p-4 ${
+            dragging ? 'ring-2 ring-[#7c92ea]' : ''
+          }`}
+        >
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="clay-pill bg-[var(--accent)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-xs font-medium text-[var(--ink)]">
+                {saving
+                  ? `${doneCount}/${chosen.length} saved`
+                  : chosen.length === 1
+                    ? '1 file ready'
+                    : `${chosen.length} files ready`}
+              </span>
+              <span className=" truncate font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">
+                {formatSize(totalBytes)} total
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="text-[var(--muted)]"
-                aria-label={`Remove ${file.name}`}
                 disabled={saving}
-                onClick={() => setChosen((current) => current.filter((item) => fileKey(item) !== fileKey(file)))}
+                onClick={openPicker}
+                className="clay-pill bg-[var(--clay)] px-3.5 py-2 font-[family-name:var(--font-mono)] text-xs font-medium text-[var(--ink)] disabled:opacity-50"
               >
-                ×
+                + Add more
               </button>
-            </li>
-          ))}
-        </ul>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  setChosen([])
+                  setFileState({})
+                  setMessage(null)
+                }}
+                className="clay-pill bg-[var(--clay)] px-3.5 py-2 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-50"
+              >
+                Clear
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="clay-pill clay-press flex-1 justify-center bg-[var(--accent)] px-5 py-2 font-[family-name:var(--font-display)] text-sm font-medium text-[var(--ink)] disabled:opacity-60 sm:flex-initial"
+              >
+                {saving
+                  ? 'Uploading…'
+                  : chosen.length === 1
+                    ? 'Upload file'
+                    : `Upload ${chosen.length} files`}
+              </button>
+            </div>
+          </div>
+
+          <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {chosen.map((file) => {
+              const key = fileKey(file)
+              const status = fileState[key] ?? 'ready'
+              return (
+                <QueuedFileItem
+                  key={key}
+                  file={file}
+                  status={status}
+                  saving={saving}
+                  onRemove={() => {
+                    setChosen((current) => current.filter((item) => fileKey(item) !== key))
+                    setFileState((current) => {
+                      const next = { ...current }
+                      delete next[key]
+                      return next
+                    })
+                  }}
+                />
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
+      {message ? (
+        <p className="px-1 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]" role="alert">
+          {message}
+        </p>
       ) : null}
-      {message ? <p className="text-sm text-[var(--muted)]" role="alert">{message}</p> : null}
     </form>
   )
 }
 
-async function uploadFiles(files: File[], setMessage: (message: string) => void): Promise<number> {
+function QueuedFileItem({
+  file,
+  status,
+  saving,
+  onRemove,
+}: {
+  file: File
+  status: QueuedStatus
+  saving: boolean
+  onRemove: () => void
+}) {
+  const [thumb, setThumb] = useState<string | null>(null)
+  const meta = describeQueuedFile(file)
+
+  useEffect(() => {
+    if (!file.type.toLowerCase().startsWith('image/')) {
+      setThumb(null)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setThumb(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
+
+  return (
+    <li className="clay flex min-w-0 items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5">
+      <div className="flex min-w-0 items-center gap-3">
+        {thumb ? (
+          <img
+            src={thumb}
+            alt=""
+            className="h-11 w-11 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-wider text-[var(--ink)]"
+            style={{ background: meta.tint }}
+          >
+            {meta.badge}
+          </span>
+        )}
+        <div className="min-w-0">
+          <p className="truncate font-[family-name:var(--font-display)] text-sm font-medium text-[var(--ink)]">
+            {file.name}
+          </p>
+          <p className="mt-0.5 truncate font-[family-name:var(--font-mono)] text-[11px] text-[var(--muted)]">
+            {formatSize(file.size)} · {statusLabel(status, meta.kind)}
+          </p>
+        </div>
+      </div>
+
+      {saving ? (
+        <span
+          className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-medium text-[var(--ink)]"
+          style={{
+            background:
+              status === 'saved'
+                ? 'var(--mint)'
+                : status === 'saving'
+                  ? 'var(--accent)'
+                  : status === 'failed'
+                    ? 'var(--peach)'
+                    : 'var(--field)',
+          }}
+        >
+          {status === 'saved'
+            ? 'Saved'
+            : status === 'saving'
+              ? 'Saving…'
+              : status === 'failed'
+                ? 'Retry'
+                : 'Queued'}
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="clay-press flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--field)] font-[family-name:var(--font-mono)] text-sm leading-none text-[var(--muted)] hover:text-[var(--ink)]"
+          aria-label={`Remove ${file.name}`}
+          onClick={onRemove}
+        >
+          ×
+        </button>
+      )}
+    </li>
+  )
+}
+
+function describeQueuedFile(file: File): { badge: string; kind: string; tint: string } {
+  const type = file.type.toLowerCase()
+  const ext = file.name.includes('.') ? file.name.split('.').pop()?.toUpperCase() ?? '' : ''
+  if (type.startsWith('image/')) {
+    return { badge: ext.slice(0, 4) || 'IMG', kind: 'Photo', tint: 'var(--lilac)' }
+  }
+  if (type.startsWith('video/')) {
+    return { badge: ext.slice(0, 4) || 'VID', kind: 'Video', tint: 'var(--mint)' }
+  }
+  if (type.startsWith('audio/')) {
+    return { badge: ext.slice(0, 4) || 'AUD', kind: 'Audio', tint: 'var(--accent)' }
+  }
+  return { badge: ext.slice(0, 4) || 'FILE', kind: 'Document', tint: 'var(--peach)' }
+}
+
+function statusLabel(status: QueuedStatus, kind: string): string {
+  if (status === 'saving') return 'Uploading to Telegram…'
+  if (status === 'saved') return 'Saved in Pocket'
+  if (status === 'failed') return 'Could not upload'
+  return kind
+}
+
+async function uploadFiles(
+  files: File[],
+  setMessage: (message: string | null) => void,
+  onStatus: (key: string, status: QueuedStatus) => void,
+): Promise<{ saved: number; failedKeys: string[] }> {
   const failed: string[] = []
+  const failedKeys: string[] = []
   let saved = 0
+  const direct = await readDirectTarget()
+
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index]
+    const key = fileKey(file)
+    onStatus(key, 'saving')
     setMessage(`Saving ${file.name} (${index + 1} of ${files.length})…`)
-    try {
-      const response = await fetch('/files/upload', {
-        method: 'POST',
-        headers: { 'x-file-name': file.name },
-        body: file,
-      })
-      const result = (await response.json()) as { ok?: boolean }
-      if (result.ok) saved += 1
-      else failed.push(file.name)
-    } catch {
+    const ok = await uploadSingleFileWithRetry(file, direct)
+    if (ok) {
+      saved += 1
+      onStatus(key, 'saved')
+    } else {
       failed.push(file.name)
+      failedKeys.push(key)
+      onStatus(key, 'failed')
+    }
+    if (index < files.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 350))
     }
   }
   if (failed.length === 0) {
-    setMessage(saved === 1 ? 'Saved in your account.' : `Saved ${saved} files.`)
+    setMessage(saved === 1 ? 'Saved in your account.' : `Saved ${saved} files in your account.`)
   } else {
-    setMessage(`Saved ${saved} of ${files.length}. ${failed.join(', ')} was not saved.`)
+    setMessage(`Saved ${saved} of ${files.length}. ${failed.join(', ')} was not saved — click Upload to retry.`)
   }
-  return saved
+  return { saved, failedKeys }
+}
+
+async function readDirectTarget(): Promise<{ uploadUrl: string; ticket: string } | null> {
+  try {
+    const response = await fetch('/files/upload', { cache: 'no-store' })
+    if (!response.ok) return null
+    const data = (await response.json()) as { ok?: boolean; uploadUrl?: string; ticket?: string }
+    if (!data.ok || !data.uploadUrl || !data.ticket) return null
+    if (typeof window !== 'undefined') {
+      const parsed = new URL(data.uploadUrl)
+      const isLoopback = parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost'
+      const pageLoopback = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+      if (isLoopback && !pageLoopback) return null
+    }
+    return { uploadUrl: data.uploadUrl, ticket: data.ticket }
+  } catch {
+    return null
+  }
+}
+
+async function uploadSingleFileWithRetry(
+  file: File,
+  direct: { uploadUrl: string; ticket: string } | null,
+): Promise<boolean> {
+  const safeHeaderName = encodeURIComponent(file.name)
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (direct) {
+      try {
+        const directResponse = await fetch(direct.uploadUrl, {
+          method: 'POST',
+          headers: {
+            'x-file-name': safeHeaderName,
+            'x-upload-ticket': direct.ticket,
+          },
+          body: file,
+        })
+        const directJson = (await directResponse.json()) as { ok?: boolean }
+        if (directJson.ok) return true
+      } catch {
+        // Fall through to same-origin proxy on network/CORS errors.
+      }
+    }
+
+    try {
+      const proxyResponse = await fetch('/files/upload', {
+        method: 'POST',
+        headers: { 'x-file-name': safeHeaderName },
+        body: file,
+      })
+      const proxyJson = (await proxyResponse.json()) as { ok?: boolean }
+      if (proxyJson.ok) return true
+    } catch {
+      // Retry on transient disconnect.
+    }
+
+    if (attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 900))
+    }
+  }
+  return false
 }
 
 function MediaTile({ file, onOpen }: { file: DriveFile; onOpen: () => void }) {
@@ -354,18 +681,26 @@ function MediaViewer({ file, onClose }: { file: DriveFile; onClose: () => void }
 
 function FileCard({ file, view }: { file: DriveFile; view: string }) {
   const [message, setMessage] = useState<string | null>(null)
+  const ext = file.name.includes('.') ? file.name.split('.').pop()?.toUpperCase().slice(0, 4) || 'FILE' : 'FILE'
 
   return (
-    <li className="clay live flex flex-col gap-3 p-5" style={{ background: cardTint(file.mimeType, view) }}>
-      <div>
-        <p className="break-all font-[family-name:var(--font-display)] text-lg font-medium">{file.name}</p>
-        <p className="break-all font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">{file.id}</p>
+    <li data-drive-rise="" className="clay live flex flex-col justify-between gap-4 p-5" style={{ background: cardTint(file.mimeType, view) }}>
+      <div className="flex items-start gap-3.5">
+        <span className="clay-pill flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--clay)] font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-wider text-[var(--ink)]">
+          {ext}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="break-words font-[family-name:var(--font-display)] text-lg font-medium leading-snug text-[var(--ink)]">
+            {file.name}
+          </p>
+          <p className="mt-1 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">
+            {formatSize(file.size)} · Saved in Telegram
+          </p>
+        </div>
       </div>
-      <p className="text-sm text-[var(--muted)]">{file.mimeType}</p>
-      <p className="font-[family-name:var(--font-mono)] text-sm">{formatSize(file.size)}</p>
-      <p className="text-sm">{file.status}</p>
-      <div className="flex gap-2">
-        <a className="clay-pill bg-[var(--clay)] px-3 py-2 text-sm" href={`/files/${file.id}/download`}>
+
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <a className="clay-pill bg-[var(--clay)] px-3.5 py-2 text-sm font-medium" href={`/files/${file.id}/download`}>
           Download
         </a>
         <form
@@ -395,5 +730,6 @@ function DeleteButton() {
 function formatSize(size: number): string {
   if (size < 1024) return `${size} B`
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+  if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`
+  return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }

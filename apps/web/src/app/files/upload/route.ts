@@ -1,8 +1,12 @@
-import { uploadDriveFile } from '@/lib/drive-api'
+import { createDirectUploadTarget, uploadDriveFile } from '@/lib/drive-api'
 import { MAX_UPLOAD_BYTES } from '@telegram-drive/types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+export async function GET(): Promise<Response> {
+  return Response.json(await createDirectUploadTarget())
+}
 
 export async function POST(request: Request): Promise<Response> {
   const declared = Number(request.headers.get('content-length') ?? '')
@@ -16,8 +20,16 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ ok: false, message: 'Choose a file to upload.' }, { status: 400 })
   }
 
+  const rawName = request.headers.get('x-file-name') ?? ''
+  let decodedName = rawName
+  try {
+    decodedName = decodeURIComponent(rawName)
+  } catch {
+    decodedName = rawName
+  }
+
   const result = await uploadDriveFile(
-    request.headers.get('x-file-name') ?? '',
+    decodedName,
     request.body,
     Number.isFinite(declared) ? declared : undefined,
   )

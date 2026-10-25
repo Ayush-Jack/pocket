@@ -88,7 +88,7 @@ export class TdlibTelegramStorage implements TelegramStorageService {
         use_message_database: true,
         use_secret_chats: false,
         system_language_code: 'en',
-        device_model: 'Telegram Drive Server',
+        device_model: 'Pocket',
         system_version: 'Windows',
         application_version: '0.1.0',
       },
@@ -310,19 +310,31 @@ export class TdlibTelegramStorage implements TelegramStorageService {
   }
 
   async logOut(): Promise<void> {
-    const client = this.requireClient()
-    await client.invoke({ _: 'logOut' })
-    await this.waitForClosed(client)
+    const client = this.client
+    const ready = this.getAuthorizationState() === 'authorizationStateReady'
+    this.rejectWaiters()
+    if (client && ready) {
+      try {
+        await client.invoke({ _: 'logOut' })
+        await this.waitForClosed(client)
+      } catch (error) {
+        log('error', 'telegram.logOut', { code: toSafeError(error).code })
+      }
+    }
     await this.close()
     this.closing = null
     this.lastAuthState = null
     this.started = false
     this.authTask = null
+    log('info', 'telegram.logOut', { state: 'closed' })
+  }
+
+  private rejectWaiters(): void {
+    const closed = new AppError('AUTH_CLOSED', 'Signed out on this device.')
+    this.pending?.reject(closed)
     this.pending = null
+    this.namePending?.reject(closed)
     this.namePending = null
-    await this.start()
-    this.beginSignIn()
-    log('info', 'telegram.logOut', { state: this.getAuthorizationState() })
   }
 
   private interactiveHandlers(): TelegramAuthHandlers {
@@ -419,7 +431,7 @@ export class TdlibTelegramStorage implements TelegramStorageService {
   }
 
   uploadFile(localPath: string): Promise<UploadedTelegramFile> {
-    return this.sendDocument(localPath)
+    return this.sendDocumentWithRetry(localPath)
   }
 
   downloadFile(fileId: string): Promise<DownloadedTelegramFile> {
@@ -545,6 +557,24 @@ export class TdlibTelegramStorage implements TelegramStorageService {
     return deleted
   }
 
+  private async sendDocumentWithRetry(localPath: string): Promise<UploadedTelegramFile> {
+    let lastError: unknown = null
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await this.sendDocument(localPath)
+      } catch (error) {
+        lastError = error
+        if (error instanceof AppError && (error.code === 'FILE_TOO_LARGE' || error.code === 'FILE_NOT_FOUND' || error.code === 'INVALID_PATH' || error.code === 'NOT_AUTHORIZED')) {
+          throw error
+        }
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)))
+        }
+      }
+    }
+    throw lastError instanceof AppError ? lastError : new AppError('UPLOAD_FAILED', 'The file was not saved to Telegram.')
+  }
+
   private async sendDocument(localPath: string): Promise<UploadedTelegramFile> {
     const absolutePath = assertLocalUploadPath(localPath)
     const size = statSync(absolutePath).size
@@ -588,6 +618,13 @@ export class TdlibTelegramStorage implements TelegramStorageService {
       const update = await waitForSendUpdate(client, queued, temporaryId, uploadTimeoutMs(size))
       if (update._ === 'updateMessageSendFailed') {
         const raw = update.error?.message ?? ''
+        const floodMatch = /^FLOOD_WAIT_(\d+)$/.exec(raw)
+        if (floodMatch) {
+          const waitSec = Math.min(30, Math.max(1, Number(floodMatch[1]) || 3))
+          log('info', 'telegram.upload.flood_wait', { waitSec })
+          await new Promise((resolve) => setTimeout(resolve, waitSec * 1000))
+          throw new AppError('FLOOD_WAIT', 'Telegram rate limit reached. Retrying shortly.')
+        }
         log('error', 'telegram.upload', { code: /^[A-Z0-9_]+$/.test(raw) ? raw : 'UPLOAD_FAILED' })
         throw new AppError('UPLOAD_FAILED', 'The file was not saved to Telegram.')
       }

@@ -53,6 +53,12 @@ export default async function LandingPage() {
               >
                 How to use
               </a>
+              <Link
+                href="/developer"
+                className="rounded-full px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)]"
+              >
+                Developer
+              </Link>
             </nav>
 
             <Link
@@ -87,6 +93,12 @@ export default async function LandingPage() {
             >
               How to use
             </a>
+            <Link
+              href="/developer"
+              className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
+            >
+              Developer
+            </Link>
           </nav>
         </div>
       </header>
@@ -187,9 +199,14 @@ export default async function LandingPage() {
             <p className="font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">Your files. Your space.</p>
           </div>
         </div>
-        <Link href="/login" className="clay-pill w-fit bg-[var(--clay)] px-4 py-2 text-sm">
-          Register / Login
-        </Link>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link href="/developer" className="clay-pill w-fit bg-[var(--clay)] px-4 py-2 text-sm">
+            Developer
+          </Link>
+          <Link href="/login" className="clay-pill w-fit bg-[var(--accent)] px-4 py-2 text-sm font-medium">
+            Register / Login
+          </Link>
+        </div>
       </footer>
     </div>
   )

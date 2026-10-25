@@ -1,10 +1,13 @@
 import 'server-only'
+import { createHmac } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import path from 'node:path'
 import { Readable } from 'node:stream'
+import { cookies, headers } from 'next/headers'
 import { UPLOAD_DEADLINE_MS } from '@telegram-drive/types'
+import { isSessionId } from '@/lib/pocket-session'
 
 export interface Account {
   userId: string
@@ -66,7 +69,25 @@ async function api(pathname: string, init: RequestInit = {}): Promise<Response> 
   const secret = process.env.SESSION_SECRET?.trim() ?? ''
   const headers = new Headers(init.headers)
   headers.set('authorization', `Bearer ${secret}`)
+  const sessionId = await browserSessionId()
+  if (sessionId) headers.set('x-pocket-session', sessionId)
   return fetch(new URL(pathname, apiBase()), { ...init, headers, cache: 'no-store' })
+}
+
+async function browserSessionId(): Promise<string | null> {
+  const fromCookie = (await cookies()).get('pocket_session')?.value
+  if (isSessionId(fromCookie)) return fromCookie
+  const fromRequest = (await headers()).get('x-pocket-session') ?? undefined
+  return isSessionId(fromRequest) ? fromRequest : null
+}
+
+const signedOut: AuthStatus = {
+  ok: true,
+  ready: false,
+  step: 'phone',
+  hint: null,
+  delivery: null,
+  retry: false,
 }
 
 async function readJson<T>(pathname: string, init?: RequestInit): Promise<DriveResult<T>> {
@@ -91,7 +112,8 @@ export interface AuthStatus {
   message?: string
 }
 
-export async function getAuthStatus(): Promise<AuthStatus> {
+export async function getAuthStatus(startSignIn = false): Promise<AuthStatus> {
+  if (!(await browserSessionId())) return signedOut
   const result = await readJson<{
     ok?: boolean
     ready?: boolean
@@ -100,7 +122,7 @@ export async function getAuthStatus(): Promise<AuthStatus> {
     delivery?: string | null
     retry?: boolean
     message?: string
-  }>('/api/auth')
+  }>(startSignIn ? '/api/auth?start=1' : '/api/auth')
   if (!result.ok || !result.data?.ok) {
     return {
       ok: false,
@@ -124,6 +146,7 @@ export async function getAuthStatus(): Promise<AuthStatus> {
 }
 
 export async function submitAuth(body: { value?: string; firstName?: string; lastName?: string }): Promise<AuthStatus> {
+  if (!(await browserSessionId())) return { ...signedOut, ok: false, message: 'Sign in on this device first.' }
   const result = await readJson<AuthStatus & { ok?: boolean; message?: string }>('/api/auth', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -189,11 +212,14 @@ export async function uploadDriveFile(
     if (error instanceof Error && error.message === 'SESSION_SECRET is missing') {
       return { ok: false, message: 'Set SESSION_SECRET before opening the drive.' }
     }
+    if (error instanceof Error && error.message === 'Sign in on this device first.') {
+      return { ok: false, message: error.message }
+    }
     return { ok: false, message: 'The drive API is not running. Start it with npm run dev.' }
   }
 }
 
-function postUpload(
+async function postUpload(
   fileName: string,
   body: ReadableStream<Uint8Array>,
   contentLength?: number,
@@ -201,10 +227,13 @@ function postUpload(
   loadRootEnv()
   const secret = process.env.SESSION_SECRET?.trim() ?? ''
   if (secret.length < 16) return Promise.reject(new Error('SESSION_SECRET is missing'))
+  const sessionId = await browserSessionId()
+  if (!sessionId) return Promise.reject(new Error('Sign in on this device first.'))
   const url = new URL('/api/files', apiBase())
   const headers: Record<string, string> = {
     authorization: `Bearer ${secret}`,
-    'x-file-name': fileName,
+    'x-pocket-session': sessionId,
+    'x-file-name': encodeURIComponent(fileName),
   }
   if (contentLength !== undefined) headers['content-length'] = String(contentLength)
 
@@ -252,4 +281,20 @@ export async function downloadDriveFile(id: string, range?: string | null): Prom
   const headers = new Headers()
   if (range) headers.set('range', range)
   return api(`/api/files/${encodeURIComponent(id)}/download`, { headers })
+}
+
+export async function createDirectUploadTarget(): Promise<{
+  ok: boolean
+  uploadUrl?: string
+  ticket?: string
+}> {
+  loadRootEnv()
+  const secret = process.env.SESSION_SECRET?.trim() ?? ''
+  const sessionId = await browserSessionId()
+  if (secret.length < 16 || !sessionId) return { ok: false }
+  const expiresAt = Date.now() + 30 * 60 * 1000
+  const sig = createHmac('sha256', secret).update(`${sessionId}.${expiresAt}`).digest('hex')
+  const ticket = `${sessionId}.${expiresAt}.${sig}`
+  const uploadUrl = new URL('/api/files', apiBase()).toString()
+  return { ok: true, uploadUrl, ticket }
 }

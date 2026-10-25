@@ -14,6 +14,11 @@ describe('sanitizeFileName', () => {
       return error instanceof Error && error.message === 'INVALID_FILE_NAME'
     })
   })
+
+  it('decodes percent-encoded and non-ASCII names safely', () => {
+    assert.equal(sanitizeFileName(encodeURIComponent('My Trip Photo (1).jpg')), 'My_Trip_Photo_1.jpg')
+    assert.equal(sanitizeFileName(encodeURIComponent('फोटो.jpg')), 'file.jpg')
+  })
 })
 
 describe('stored file content', () => {
