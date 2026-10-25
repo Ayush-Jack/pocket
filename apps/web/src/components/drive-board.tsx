@@ -26,6 +26,7 @@ export function DriveBoard({
   files: DriveFile[]
   view: string
 }) {
+  const router = useRouter()
   const active = views.some((item) => item.id === view) ? view : 'all'
   const visible = files.filter((file) => file.status !== 'DELETED' && matchesView(file.mimeType, active))
   const media = active === 'documents' ? [] : visible.filter((file) => isMedia(file.mimeType))
@@ -33,6 +34,20 @@ export function DriveBoard({
   const title = views.find((item) => item.id === active)?.label ?? 'All files'
   const [opened, setOpened] = useState<DriveFile | null>(null)
   const shown = `${active}:${visible.map((file) => file.id).join(',')}`
+
+  useEffect(() => {
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        router.refresh()
+      }
+    }
+    window.addEventListener('focus', refreshOnFocus)
+    document.addEventListener('visibilitychange', refreshOnFocus)
+    return () => {
+      window.removeEventListener('focus', refreshOnFocus)
+      document.removeEventListener('visibilitychange', refreshOnFocus)
+    }
+  }, [router])
 
   useEffect(() => {
     if (reducedMotion()) return
@@ -684,16 +699,16 @@ function FileCard({ file, view }: { file: DriveFile; view: string }) {
   const ext = file.name.includes('.') ? file.name.split('.').pop()?.toUpperCase().slice(0, 4) || 'FILE' : 'FILE'
 
   return (
-    <li data-drive-rise="" className="clay live flex flex-col justify-between gap-4 p-5" style={{ background: cardTint(file.mimeType, view) }}>
-      <div className="flex items-start gap-3.5">
+    <li data-drive-rise="" className="clay live flex min-w-0 flex-col justify-between gap-4 overflow-hidden p-5" style={{ background: cardTint(file.mimeType, view) }}>
+      <div className="flex min-w-0 items-start gap-3.5">
         <span className="clay-pill flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--clay)] font-[family-name:var(--font-mono)] text-[10px] font-semibold tracking-wider text-[var(--ink)]">
           {ext}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="break-words font-[family-name:var(--font-display)] text-lg font-medium leading-snug text-[var(--ink)]">
+          <p className="font-[family-name:var(--font-display)] text-lg font-medium leading-snug text-[var(--ink)] [overflow-wrap:anywhere]">
             {file.name}
           </p>
-          <p className="mt-1 font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">
+          <p className="mt-1 truncate font-[family-name:var(--font-mono)] text-xs text-[var(--muted)]">
             {formatSize(file.size)} · Saved in Telegram
           </p>
         </div>

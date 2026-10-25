@@ -241,12 +241,12 @@ const POCKET_FOLDER_ITEMS = [
     sheetBg: 'linear-gradient(155deg, #ffffff 0%, #f3f0ff 55%, #e5dffb 100%)',
     badgeBg: '#e7e4f8',
     accent: '#6c56cf',
-    fanX: -52,
-    fanY: -50,
-    fanRot: -10,
-    idleX: -34,
-    idleY: -20,
-    idleRot: -5,
+    fanX: -40,
+    fanY: -36,
+    fanRot: -8,
+    idleX: -26,
+    idleY: -12,
+    idleRot: -4,
   },
   {
     id: 'docs',
@@ -260,10 +260,10 @@ const POCKET_FOLDER_ITEMS = [
     badgeBg: '#d9e0ff',
     accent: '#4a62d8',
     fanX: 0,
-    fanY: -64,
+    fanY: -48,
     fanRot: 0,
     idleX: 0,
-    idleY: -32,
+    idleY: -22,
     idleRot: 0,
   },
   {
@@ -277,12 +277,12 @@ const POCKET_FOLDER_ITEMS = [
     sheetBg: 'linear-gradient(155deg, #ffffff 0%, #ebf9f3 55%, #d6f0e5 100%)',
     badgeBg: '#ddefe8',
     accent: '#2e8b67',
-    fanX: 52,
-    fanY: -50,
-    fanRot: 10,
-    idleX: 34,
-    idleY: -20,
-    idleRot: 5,
+    fanX: 40,
+    fanY: -36,
+    fanRot: 8,
+    idleX: 26,
+    idleY: -12,
+    idleRot: 4,
   },
 ] as const
 
@@ -363,19 +363,6 @@ export function HeroFileObject() {
         className="relative h-[286px] w-full sm:h-[320px]"
         style={{ transformStyle: 'preserve-3d' }}
       >
-        {/* Floating Clay Badge — Top Right */}
-        <div
-          className="clay-pill float-slow pointer-events-none absolute right-2 top-2 z-40 gap-2 bg-[var(--clay)] px-3 py-1.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold text-[var(--ink)]"
-          style={{
-            transform: 'translateZ(64px)',
-            boxShadow:
-              '-6px -6px 14px rgba(255,255,255,0.95), 8px 12px 22px rgba(145,165,198,0.52), inset 1.5px 1.5px 3px rgba(255,255,255,0.95)',
-          }}
-        >
-          <span className="h-2 w-2 rounded-full bg-[#3b9874]" />
-          <span>{activeItem.tag}</span>
-        </div>
-
         {/* 1. BACK CLAY FOLDER BODY + MOLDED TOP-LEFT FOLDER TAB */}
         <div
           className="absolute inset-x-3 bottom-3 top-12 rounded-[32px] sm:inset-x-4 sm:rounded-[36px]"
@@ -419,10 +406,10 @@ export function HeroFileObject() {
         {POCKET_FOLDER_ITEMS.map((item, idx) => {
           const isSelected = idx === activeIdx
           const tx = isSelected ? 0 : isExpanded ? item.fanX : item.idleX
-          const ty = isSelected ? -46 : isExpanded ? item.fanY + 12 : item.idleY + 14
+          const ty = isSelected ? -36 : isExpanded ? item.fanY + 12 : item.idleY + 14
           const tz = isSelected ? 22 : idx === 1 ? 4 : -6
           const rot = isSelected ? 0 : isExpanded ? item.fanRot : item.idleRot
-          const scale = isSelected ? 1.02 : isExpanded ? 0.93 : 0.89
+          const scale = isSelected ? 1.0 : isExpanded ? 0.91 : 0.86
 
           return (
             <button
@@ -433,7 +420,7 @@ export function HeroFileObject() {
                 setFolderOpen(true)
               }}
               aria-label={`Select ${item.label} file ${item.name}`}
-              className="absolute left-1/2 top-11 w-[184px] -translate-x-1/2 rounded-[24px] p-3 text-left transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-[218px] sm:rounded-[26px] sm:p-3.5"
+              className="absolute left-1/2 top-11 w-[176px] -translate-x-1/2 overflow-hidden rounded-[24px] p-3 text-left transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-[214px] sm:rounded-[26px] sm:p-3.5"
               style={{
                 background: item.sheetBg,
                 border: '2px solid rgba(255, 255, 255, 0.96)',
@@ -456,8 +443,12 @@ export function HeroFileObject() {
                   >
                     {item.ext}
                   </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-[family-name:var(--font-display)] text-xs font-semibold text-[var(--ink)]">
+                  <div
+                    className={`min-w-0 transition-opacity duration-300 ${
+                      isSelected ? 'opacity-100' : 'opacity-0 sm:opacity-75'
+                    }`}
+                  >
+                    <p className="truncate font-[family-name:var(--font-display)] text-[11px] font-semibold text-[var(--ink)] sm:text-xs">
                       {item.name}
                     </p>
                     <p className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
@@ -471,10 +462,14 @@ export function HeroFileObject() {
               <div className="mt-2.5 space-y-1.5 rounded-2xl bg-white/70 p-2 shadow-inner sm:mt-3 sm:p-2.5">
                 <div className="flex items-center justify-between gap-1">
                   <span
-                    className="h-2 w-14 rounded-full sm:w-16"
+                    className="h-2 w-12 rounded-full sm:w-16"
                     style={{ background: item.badgeBg }}
                   />
-                  <span className="font-[family-name:var(--font-mono)] text-[9px] font-semibold text-[var(--muted)]">
+                  <span
+                    className={`truncate font-[family-name:var(--font-mono)] text-[9px] font-semibold text-[var(--muted)] transition-opacity duration-300 ${
+                      isSelected ? 'opacity-100' : 'opacity-0 sm:opacity-70'
+                    }`}
+                  >
                     {item.tag}
                   </span>
                 </div>
@@ -549,16 +544,16 @@ export function HeroFileObject() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-[family-name:var(--font-mono)] text-[9px] font-semibold uppercase tracking-[0.12em] text-white/85 sm:text-[10px]">
+                  <p className="truncate font-[family-name:var(--font-mono)] text-[8.5px] font-semibold uppercase tracking-[0.06em] text-white/85 sm:text-[10px] sm:tracking-[0.12em]">
                     {activeItem.status}
                   </p>
-                  <p className="truncate font-[family-name:var(--font-display)] text-base font-semibold leading-tight text-white drop-shadow-2xs sm:text-lg">
+                  <p className="truncate font-[family-name:var(--font-display)] text-sm font-semibold leading-tight text-white drop-shadow-2xs sm:text-lg">
                     {activeItem.name}
                   </p>
                 </div>
               </div>
 
-              <span className="shrink-0 whitespace-nowrap rounded-full bg-white/90 px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-bold text-[#3e4a5c] shadow-sm sm:px-3">
+              <span className="shrink-0 whitespace-nowrap rounded-full bg-white/90 px-2 py-0.5 font-[family-name:var(--font-mono)] text-[9.5px] font-bold text-[#3e4a5c] shadow-sm sm:px-3 sm:py-1 sm:text-[10px]">
                 {activeItem.size}
               </span>
             </div>
@@ -1274,33 +1269,37 @@ export function WorksInteractiveSection() {
               </div>
 
               {/* Visual: Simple Telegram -> Pocket bridge */}
-              <div className="clay-well-sm flex items-center justify-between gap-3 bg-white/60 px-4 py-3.5">
-                <div className="flex items-center gap-2.5">
-                  <span className="clay-pill flex h-10 w-10 shrink-0 items-center justify-center bg-[#5569dc] text-white">
-                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+              <div className="clay-well-sm flex items-center justify-between gap-1.5 bg-white/60 px-2.5 py-3 sm:gap-2.5 sm:px-3.5 sm:py-3.5">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="clay-pill flex h-8 w-8 shrink-0 items-center justify-center bg-[#5569dc] text-white sm:h-9 sm:w-9">
+                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true">
                       <path
                         d="M21.2 4.4 2.9 11.5c-.8.3-.8 1.4 0 1.7l4.7 1.7 1.8 5.3c.3.8 1.3 1 1.9.3l2.7-3.1 4.6 3.4c.7.5 1.7.1 1.9-.8l2.2-14.3c.2-.9-.7-1.6-1.5-1.3Z"
                         fill="currentColor"
                       />
                     </svg>
                   </span>
-                  <div>
-                    <p className="text-xs font-semibold text-[var(--ink)]">Telegram</p>
-                    <p className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">Your account</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-[var(--ink)]">Telegram</p>
+                    <p className="truncate font-[family-name:var(--font-mono)] text-[9.5px] text-[var(--muted)] sm:text-[10px]">
+                      Your account
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[var(--muted)]" aria-hidden="true">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#5569dc]/50" />
-                  <span className="h-0.5 w-6 rounded-full bg-[#5569dc]/40" />
+                <div className="flex shrink-0 items-center gap-1 text-[var(--muted)]" aria-hidden="true">
+                  <span className="hidden h-1.5 w-1.5 rounded-full bg-[#5569dc]/50 sm:inline-block" />
+                  <span className="hidden h-0.5 w-4 rounded-full bg-[#5569dc]/40 sm:inline-block" />
                   <span className="text-xs font-semibold text-[#5569dc]">→</span>
                 </div>
 
-                <div className="flex items-center gap-2.5">
-                  <Logo className="h-10 w-10 shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-[var(--ink)]">Pocket</p>
-                    <p className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">Your drive</p>
+                <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                  <Logo className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-[var(--ink)]">Pocket</p>
+                    <p className="truncate font-[family-name:var(--font-mono)] text-[9.5px] text-[var(--muted)] sm:text-[10px]">
+                      Your drive
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1355,23 +1354,23 @@ export function WorksInteractiveSection() {
               </div>
 
               {/* Visual: Chat message -> Clean file card */}
-              <div className="clay-well-sm flex items-center justify-between gap-3 bg-white/60 p-3">
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl bg-[var(--clay)] p-2.5 shadow-xs flex-1">
+              <div className="clay-well-sm flex items-center justify-between gap-2 bg-white/60 p-2.5 sm:gap-3 sm:p-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-2xl bg-[var(--clay)] p-2 shadow-xs sm:gap-3 sm:p-2.5">
                   <img
                     src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=240&q=75"
                     alt="Saved photo"
-                    className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                    className="h-10 w-10 shrink-0 rounded-xl object-cover sm:h-11 sm:w-11"
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-[var(--ink)]">
                       Tokyo dinner.jpg
                     </p>
-                    <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
+                    <p className="mt-0.5 truncate font-[family-name:var(--font-mono)] text-[9.5px] text-[var(--muted)] sm:text-[10px]">
                       Saved Messages → Picture Card
                     </p>
                   </div>
                 </div>
-                <span className="clay-pill shrink-0 bg-[var(--lilac)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-medium text-[var(--ink)]">
+                <span className="clay-pill hidden shrink-0 bg-[var(--lilac)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-medium text-[var(--ink)] min-[380px]:inline-flex">
                   Organized
                 </span>
               </div>
@@ -1827,7 +1826,7 @@ export function FeaturesInteractiveSection() {
             style={{
               position: 'relative',
               width: 'min(548px, calc(100vw - 28px))',
-              height: 'clamp(235px, calc(100svh - 210px), 380px)',
+              height: 'clamp(310px, calc(100svh - 180px), 400px)',
               flexShrink: 0,
               perspective: '1600px',
               transformStyle: 'preserve-3d',
@@ -1968,12 +1967,14 @@ export function FeaturesInteractiveSection() {
                     ref={(el) => {
                       photosRefs.current[t] = el
                     }}
-                    className="mt-2 grid grid-cols-2 gap-1.5 sm:mt-3.5 sm:gap-2.5"
+                    className="mt-2.5 grid grid-cols-1 gap-1.5 min-[480px]:grid-cols-2 sm:mt-3.5 sm:gap-2.5"
                   >
-                    {card.photos.map((photo) => (
+                    {card.photos.map((photo, pIdx) => (
                       <div
                         key={photo.label}
-                        className="clay-well-sm flex min-w-0 items-center gap-1.5 px-2 py-1.5 sm:gap-2.5 sm:px-2.5 sm:py-2"
+                        className={`clay-well-sm min-w-0 items-center gap-2.5 px-2.5 py-1.5 sm:py-2 ${
+                          pIdx >= 2 ? 'hidden min-[480px]:flex' : 'flex'
+                        }`}
                         style={{
                           background: 'rgba(231, 238, 246, 0.78)',
                           border: '1px solid rgba(255, 255, 255, 0.82)',
@@ -1982,13 +1983,13 @@ export function FeaturesInteractiveSection() {
                         <img
                           src={photo.src}
                           alt={photo.label}
-                          className="h-7 w-8 shrink-0 rounded-lg border border-white/90 object-cover shadow-xs sm:h-10 sm:w-12 sm:rounded-xl"
+                          className="h-8 w-10 shrink-0 rounded-lg border border-white/90 object-cover shadow-xs sm:h-10 sm:w-12 sm:rounded-xl"
                         />
-                        <div className="min-w-0">
-                          <p className="truncate font-[family-name:var(--font-display)] text-[11px] font-semibold text-[var(--ink)] sm:text-xs">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-[family-name:var(--font-display)] text-xs font-semibold text-[var(--ink)]">
                             {photo.label}
                           </p>
-                          <p className="truncate font-[family-name:var(--font-mono)] text-[9px] text-[var(--muted)] sm:text-[10px]">
+                          <p className="truncate font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)]">
                             {photo.meta}
                           </p>
                         </div>

@@ -89,10 +89,10 @@ export interface TelegramStorageService {
   submitRegistration(firstName: string, lastName: string): Promise<void>
   logOut(): Promise<void>
   close(): Promise<void>
-  listFiles(): Promise<never>
+  listFiles(): Promise<UploadedTelegramFile[]>
   uploadFile(localPath: string): Promise<UploadedTelegramFile>
   downloadFile(fileId: string): Promise<DownloadedTelegramFile>
-  downloadSavedDocument(messageId: string): Promise<LocalTelegramFile>
+  downloadSavedDocument(messageId: string, remoteId?: string | null): Promise<LocalTelegramFile>
   deleteFile(messageId: string): Promise<DeletedTelegramMessage>
   getFileMetadata(): Promise<never>
   searchFiles(): Promise<never>

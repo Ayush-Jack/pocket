@@ -84,6 +84,7 @@ export interface StoredFile extends PublicFile {
   telegramChatId: string
   telegramMessageId: string
   telegramFileId: string
+  telegramRemoteId: string | null
 }
 
 export async function getAccount(
@@ -128,6 +129,66 @@ export async function getFileForUser(
     telegramChatId: file.telegramChatId,
     telegramMessageId: file.telegramMessageId,
     telegramFileId: file.telegramFileId,
+    telegramRemoteId: file.telegramRemoteId,
+  }
+}
+
+export interface RemoteSavedFile {
+  chatId: string
+  messageId: string
+  fileId: string
+  remoteId: string | null
+  name: string
+  mimeType: string
+  size: number
+}
+
+export async function syncSavedMessagesFiles(
+  prisma: PrismaClient,
+  userId: string,
+  folderId: string,
+  remoteFiles: RemoteSavedFile[],
+): Promise<void> {
+  if (remoteFiles.length === 0) return
+  const existing = await prisma.file.findMany({
+    where: { userId },
+    select: { id: true, telegramMessageId: true, telegramRemoteId: true },
+  })
+  const byMessageId = new Map(existing.map((row) => [row.telegramMessageId, row]))
+  const knownRemoteIds = new Set(
+    existing.map((row) => row.telegramRemoteId).filter((id): id is string => typeof id === 'string' && id.length > 0),
+  )
+
+  for (const doc of [...remoteFiles].reverse()) {
+    const matched = byMessageId.get(doc.messageId)
+    if (matched) {
+      if (!matched.telegramRemoteId && doc.remoteId) {
+        await prisma.file.update({
+          where: { id: matched.id },
+          data: { telegramRemoteId: doc.remoteId },
+        })
+      }
+      continue
+    }
+    if (doc.remoteId && knownRemoteIds.has(doc.remoteId)) continue
+
+    byMessageId.set(doc.messageId, {
+      id: doc.messageId,
+      telegramMessageId: doc.messageId,
+      telegramRemoteId: doc.remoteId,
+    })
+    if (doc.remoteId) knownRemoteIds.add(doc.remoteId)
+
+    await createUploadedFile(prisma, userId, folderId, {
+      name: doc.name,
+      mimeType: doc.mimeType,
+      size: doc.size,
+      telegramChatId: doc.chatId,
+      telegramMessageId: doc.messageId,
+      telegramFileId: doc.fileId,
+      telegramRemoteId: doc.remoteId,
+      status: 'UPLOADED',
+    })
   }
 }
 

@@ -43,6 +43,8 @@ const START_TIMEOUT_MS = 45_000
 export class TdlibTelegramStorage implements TelegramStorageService {
   private client: TdlibClient | null = null
   private lastAuthState: AuthorizationStateUpdate | null = null
+  private cachedIdentity: TelegramUserIdentity | null = null
+  private cachedSavedChat: SavedMessagesChat | null = null
   private startupError: AppError | null = null
   private started = false
   private closing: Promise<void> | null = null
@@ -186,8 +188,10 @@ export class TdlibTelegramStorage implements TelegramStorageService {
     if (this.lastAuthState?._ !== 'authorizationStateReady') {
       throw new AppError('NOT_AUTHORIZED', 'Telegram authorization is not complete.')
     }
+    if (this.cachedIdentity) return this.cachedIdentity
     const me = await this.requireClient().invoke({ _: 'getMe' })
     const identity = toTelegramUserIdentity(me)
+    this.cachedIdentity = identity
     log('info', 'telegram.getMe', {
       telegramUserId: identity.telegramUserId,
       hasUsername: identity.username != null,
@@ -196,6 +200,7 @@ export class TdlibTelegramStorage implements TelegramStorageService {
   }
 
   async getSavedMessagesChat(): Promise<SavedMessagesChat> {
+    if (this.cachedSavedChat) return this.cachedSavedChat
     const identity = await this.getCurrentUser()
     const userId = Number(identity.telegramUserId)
     if (!Number.isSafeInteger(userId)) {
@@ -208,6 +213,7 @@ export class TdlibTelegramStorage implements TelegramStorageService {
       force: false,
     })
     const saved = readSavedMessagesChat(identity.telegramUserId, chat)
+    this.cachedSavedChat = saved
     log('info', 'telegram.savedMessages', {
       chatId: saved.chatId,
       userId: saved.userId,
@@ -324,6 +330,8 @@ export class TdlibTelegramStorage implements TelegramStorageService {
     await this.close()
     this.closing = null
     this.lastAuthState = null
+    this.cachedIdentity = null
+    this.cachedSavedChat = null
     this.started = false
     this.authTask = null
     log('info', 'telegram.logOut', { state: 'closed' })
@@ -421,13 +429,67 @@ export class TdlibTelegramStorage implements TelegramStorageService {
       log('error', 'tdlib.close', { code: toSafeError(error).code })
     }).finally(() => {
       this.client = null
+      this.cachedIdentity = null
+      this.cachedSavedChat = null
       this.started = false
     })
     return this.closing
   }
 
-  listFiles(): Promise<never> {
-    return notImplemented()
+  async listFiles(): Promise<UploadedTelegramFile[]> {
+    if (this.lastAuthState?._ !== 'authorizationStateReady') {
+      throw new AppError('NOT_AUTHORIZED', 'Telegram authorization is not complete.')
+    }
+    const saved = await this.getSavedMessagesChat()
+    const chatId = requireSafeInteger(saved.chatId, 'DOWNLOAD_FAILED', 'Saved Messages could not be opened.')
+    const client = this.requireClient()
+
+    const byMessageId = new Map<string, UploadedTelegramFile>()
+    let fromMessageId = 0
+
+    for (let page = 0; page < 4; page += 1) {
+      let history: unknown
+      try {
+        history = await client.invoke({
+          _: 'getChatHistory',
+          chat_id: chatId,
+          from_message_id: fromMessageId,
+          offset: 0,
+          limit: 50,
+          only_local: false,
+        })
+      } catch {
+        break
+      }
+
+      const messages =
+        history && typeof history === 'object' && Array.isArray((history as Record<string, unknown>).messages)
+          ? ((history as Record<string, unknown>).messages as unknown[])
+          : []
+      if (messages.length === 0) break
+
+      let oldestId = 0
+      for (const message of messages) {
+        if (!message || typeof message !== 'object') continue
+        const rawId = (message as Record<string, unknown>).id
+        if (typeof rawId === 'number' && Number.isSafeInteger(rawId)) {
+          oldestId = rawId
+        }
+        try {
+          const doc = readUploadedDocument(saved.chatId, message)
+          if (doc.name && doc.size > 0 && !byMessageId.has(doc.messageId)) {
+            byMessageId.set(doc.messageId, doc)
+          }
+        } catch {
+          // Non-document messages or pending messages in Saved Messages are ignored.
+        }
+      }
+
+      if (!oldestId || oldestId === fromMessageId) break
+      fromMessageId = oldestId
+    }
+
+    return [...byMessageId.values()]
   }
 
   uploadFile(localPath: string): Promise<UploadedTelegramFile> {
@@ -438,19 +500,56 @@ export class TdlibTelegramStorage implements TelegramStorageService {
     return this.downloadDocument(fileId)
   }
 
-  async downloadSavedDocument(messageId: string): Promise<LocalTelegramFile> {
+  async downloadSavedDocument(messageId: string, remoteId?: string | null): Promise<LocalTelegramFile> {
     if (this.lastAuthState?._ !== 'authorizationStateReady') {
       throw new AppError('NOT_AUTHORIZED', 'Telegram authorization is not complete.')
     }
     const saved = await this.getSavedMessagesChat()
     const chatId = requireSafeInteger(saved.chatId, 'DOWNLOAD_FAILED', 'The file could not be downloaded.')
     const messageIdNumber = requireSafeInteger(messageId, 'DOWNLOAD_FAILED', 'The file could not be downloaded.')
-    const message = await this.requireClient().invoke({
-      _: 'getMessage',
-      chat_id: chatId,
-      message_id: messageIdNumber,
-    })
-    return this.ensureLocalFile(readDocumentFileId(message))
+    const client = this.requireClient()
+
+    let message: unknown = null
+    try {
+      message = await client.invoke({
+        _: 'getMessage',
+        chat_id: chatId,
+        message_id: messageIdNumber,
+      })
+    } catch {
+      await this.listFiles().catch(() => [])
+      try {
+        message = await client.invoke({
+          _: 'getMessage',
+          chat_id: chatId,
+          message_id: messageIdNumber,
+        })
+      } catch {
+        message = null
+      }
+    }
+
+    if (message) {
+      return this.ensureLocalFile(readDocumentFileId(message))
+    }
+
+    if (typeof remoteId === 'string' && remoteId.length > 0) {
+      try {
+        const remoteFile = (await client.invoke({
+          _: 'getRemoteFile',
+          remote_file_id: remoteId,
+          file_type: { _: 'fileTypeDocument' },
+        })) as Record<string, unknown>
+        const resolvedId = remoteFile?.id
+        if (typeof resolvedId === 'number' || typeof resolvedId === 'string') {
+          return this.ensureLocalFile(String(resolvedId))
+        }
+      } catch {
+        // Fall through to standard DOWNLOAD_FAILED error below.
+      }
+    }
+
+    throw new AppError('DOWNLOAD_FAILED', 'The file could not be downloaded.')
   }
 
   deleteFile(messageId: string): Promise<DeletedTelegramMessage> {
@@ -515,11 +614,25 @@ export class TdlibTelegramStorage implements TelegramStorageService {
     const client = this.requireClient()
 
     try {
-      const properties = await client.invoke({
-        _: 'getMessageProperties',
-        chat_id: chatId,
-        message_id: messageIdNumber,
-      })
+      let properties: unknown
+      try {
+        properties = await client.invoke({
+          _: 'getMessageProperties',
+          chat_id: chatId,
+          message_id: messageIdNumber,
+        })
+      } catch (firstError) {
+        if (isMessageMissing(firstError)) {
+          await this.listFiles().catch(() => [])
+          properties = await client.invoke({
+            _: 'getMessageProperties',
+            chat_id: chatId,
+            message_id: messageIdNumber,
+          })
+        } else {
+          throw firstError
+        }
+      }
       const revoke = chooseDeleteRevoke(properties)
       await client.invoke({
         _: 'deleteMessages',
@@ -528,6 +641,9 @@ export class TdlibTelegramStorage implements TelegramStorageService {
         revoke,
       })
     } catch (error) {
+      if (isMessageMissing(error)) {
+        return { chatId: saved.chatId, messageId, deleted: true }
+      }
       if (error instanceof AppError) throw error
       const safe = toSafeError(error)
       log('error', 'telegram.delete', { code: safe.code })

@@ -12,6 +12,7 @@ import {
   listFiles,
   markFileDeleted,
   saveSignedInAccount,
+  syncSavedMessagesFiles,
 } from '@telegram-drive/metadata'
 import { DeviceSessions } from './device-sessions'
 import { mimeTypeFor, sanitizeFileName } from './file-name'
@@ -207,6 +208,26 @@ async function handleMe(response: ServerResponse, app: AppContext, service: Stor
 
 async function handleList(response: ServerResponse, app: AppContext, service: StorageService, sessionId: string): Promise<void> {
   const account = await ensureAccount(app, service, sessionId)
+  try {
+    const savedDocs = await service.listFiles()
+    const mapped = savedDocs
+      .map((doc) => {
+        try {
+          const cleanName = sanitizeFileName(doc.name)
+          return {
+            ...doc,
+            name: cleanName,
+            mimeType: mimeTypeFor(cleanName),
+          }
+        } catch {
+          return null
+        }
+      })
+      .filter((doc): doc is NonNullable<typeof doc> => doc !== null)
+    await syncSavedMessagesFiles(app.prisma, account.userId, account.folderId, mapped)
+  } catch {
+    // If Telegram history sync fails transiently, still return stored metadata.
+  }
   const files = await listFiles(app.prisma, account.userId)
   sendJson(response, 200, { ok: true, files })
 }
@@ -259,7 +280,7 @@ async function handleDownload(request: IncomingMessage, response: ServerResponse
     sendJson(response, 404, { ok: false, code: 'NOT_FOUND', message: 'Not found.' })
     return
   }
-  const downloaded = await service.downloadSavedDocument(file.telegramMessageId)
+  const downloaded = await service.downloadSavedDocument(file.telegramMessageId, file.telegramRemoteId)
   const range = readByteRange(request.headers.range, downloaded.size)
   if (request.headers.range && !range) {
     response.writeHead(416, { 'content-range': `bytes */${downloaded.size}` })

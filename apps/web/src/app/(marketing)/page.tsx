@@ -72,30 +72,30 @@ export default async function LandingPage() {
 
           {/* Mobile & Tablet quick section jump bar */}
           <nav
-            className="no-scrollbar flex items-center justify-around gap-1 border-t border-[rgba(62,74,92,0.08)] pt-1.5 sm:justify-center sm:gap-2 lg:hidden"
+            className="flex items-center justify-between gap-0.5 border-t border-[rgba(62,74,92,0.08)] pt-1.5 sm:justify-center sm:gap-2 lg:hidden"
             aria-label="Mobile page sections"
           >
             <a
               href="#how-it-works"
-              className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
+              className="rounded-full px-1.5 py-1 font-[family-name:var(--font-mono)] text-[9.5px] whitespace-nowrap text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
             >
               How it works
             </a>
             <a
               href="#features"
-              className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
+              className="rounded-full px-1.5 py-1 font-[family-name:var(--font-mono)] text-[9.5px] whitespace-nowrap text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
             >
-              What you can do
+              Features
             </a>
             <a
               href="#steps"
-              className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
+              className="rounded-full px-1.5 py-1 font-[family-name:var(--font-mono)] text-[9.5px] whitespace-nowrap text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
             >
               How to use
             </a>
             <Link
               href="/developer"
-              className="shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
+              className="rounded-full px-1.5 py-1 font-[family-name:var(--font-mono)] text-[9.5px] whitespace-nowrap text-[var(--muted)] transition-colors hover:bg-[var(--field)] hover:text-[var(--ink)] sm:px-3 sm:text-[11px]"
             >
               Developer
             </Link>
@@ -105,18 +105,18 @@ export default async function LandingPage() {
 
       <main className="overflow-x-clip">
         {/* Hero Stage */}
-        <section className="mx-auto grid min-h-[calc(100svh-5.5rem)] w-full max-w-7xl content-center items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 md:grid-cols-[1.05fr_0.95fr] md:gap-8 lg:gap-12 lg:px-8">
+        <section className="mx-auto grid min-h-[calc(100svh-5.5rem)] w-full max-w-7xl content-center items-center gap-5 px-4 py-5 sm:gap-8 sm:px-6 sm:py-12 md:grid-cols-[1.05fr_0.95fr] md:gap-8 lg:gap-12 lg:px-8">
           <div className="min-w-0 text-center md:text-left">
             <p
               data-hero-reveal=""
-              className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.18em] text-[var(--muted)]"
+              className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.18em] text-[var(--muted)] sm:text-xs"
             >
               Your files · Your space
             </p>
 
             <h1
               data-hero-reveal=""
-              className="mt-4 pb-2 font-[family-name:var(--font-display)] text-[2.45rem] font-medium leading-[1.03] tracking-[-0.025em] sm:mt-5 sm:text-5xl md:text-[3rem] lg:text-[3.85rem] xl:text-[4.35rem]"
+              className="mt-3 pb-1.5 font-[family-name:var(--font-display)] text-[2.15rem] font-medium leading-[1.04] tracking-[-0.025em] sm:mt-5 sm:pb-2 sm:text-5xl md:text-[3rem] lg:text-[3.85rem] xl:text-[4.35rem]"
             >
               Your files have a home. It&apos;s{' '}
               <PointerHighlight
@@ -131,16 +131,16 @@ export default async function LandingPage() {
 
             <p
               data-hero-reveal=""
-              className="mx-auto mt-4 max-w-md text-base leading-relaxed text-[var(--muted)] sm:mt-5 sm:text-lg md:mx-0"
+              className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[var(--muted)] sm:mt-5 sm:text-lg md:mx-0"
             >
               Turn scattered messages into an organized file library—ready to find, preview, and download whenever you need.
             </p>
 
-            <div data-hero-reveal="" className="mt-6 sm:mt-8">
+            <div data-hero-reveal="" className="mt-5 sm:mt-8">
               <Link
                 href="/login"
                 data-magnetic=""
-                className="clay-press inline-flex items-center gap-2.5 rounded-full bg-[var(--accent)] px-6 py-3 font-[family-name:var(--font-display)] text-base font-medium sm:px-7 sm:py-3.5 sm:text-lg"
+                className="clay-press inline-flex items-center gap-2.5 rounded-full bg-[var(--accent)] px-6 py-2.5 font-[family-name:var(--font-display)] text-base font-medium sm:px-7 sm:py-3.5 sm:text-lg"
               >
                 <span>Register / Login</span>
                 <span aria-hidden="true">→</span>

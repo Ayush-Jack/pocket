@@ -87,17 +87,17 @@ export function DeveloperShowcase({ signedIn = false }: { signedIn?: boolean }) 
             </div>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <Link
               href={signedIn ? '/drive' : '/'}
-              className="clay-pill bg-[var(--clay)] px-3.5 py-2 font-[family-name:var(--font-mono)] text-xs text-[var(--ink)] sm:px-4"
+              className="clay-pill bg-[var(--clay)] px-2.5 py-1.5 font-[family-name:var(--font-mono)] text-[11px] whitespace-nowrap text-[var(--ink)] sm:px-4 sm:py-2 sm:text-xs"
             >
-              {signedIn ? '← Back to Drive' : '← Home'}
+              {signedIn ? '← Drive' : '← Home'}
             </Link>
             {!signedIn ? (
               <Link
                 href="/login"
-                className="clay-pill bg-[var(--accent)] px-3.5 py-2 text-xs font-medium whitespace-nowrap sm:px-5 sm:text-sm"
+                className="clay-pill bg-[var(--accent)] px-3 py-1.5 text-[11px] font-medium whitespace-nowrap sm:px-5 sm:py-2 sm:text-sm"
               >
                 Register / Login
               </Link>
