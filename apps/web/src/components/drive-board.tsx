@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useFormStatus } from 'react-dom'
 import { deleteAction } from '@/app/actions'
@@ -113,6 +114,31 @@ export function DriveBoard({
             {visible.length === 1 ? '1 item' : `${visible.length} items`}
           </span>
         </div>
+
+        {/* Quick View Switcher Pills for Touch / Mobile / Tablet */}
+        <nav
+          aria-label="Filter files by kind"
+          className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5 lg:hidden"
+        >
+          {views.map((item) => {
+            const isCurrent = item.id === active
+            const href = item.id === 'all' ? '/drive' : `/drive?view=${item.id}`
+            return (
+              <Link
+                key={item.id}
+                href={href}
+                className={`clay-pill shrink-0 px-3.5 py-2 font-[family-name:var(--font-mono)] text-xs transition-all ${
+                  isCurrent
+                    ? 'bg-[var(--accent)] font-semibold text-[var(--ink)]'
+                    : 'bg-[var(--field)] text-[var(--muted)] hover:text-[var(--ink)]'
+                }`}
+              >
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+
         <UploadForm />
       </header>
 
@@ -136,7 +162,14 @@ export function DriveBoard({
           ) : null}
         </>
       )}
-      {opened ? <MediaViewer file={opened} onClose={() => setOpened(null)} /> : null}
+      {opened ? (
+        <MediaViewer
+          file={opened}
+          media={media}
+          onSelect={(next) => setOpened(next)}
+          onClose={() => setOpened(null)}
+        />
+      ) : null}
     </section>
   )
 }
@@ -306,7 +339,7 @@ function UploadForm() {
                 {dragging ? 'Drop files to add them to Pocket' : 'Drop files here, or choose from your device'}
               </p>
               <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] text-[var(--muted)] sm:text-xs">
-                Photos, videos, and documents · Up to 2 GB per file · Press U
+                Photos, videos, and documents · Up to 2 GB per file ·
               </p>
             </div>
           </div>
@@ -651,26 +684,150 @@ function MediaTile({ file, onOpen }: { file: DriveFile; onOpen: () => void }) {
   )
 }
 
-function MediaViewer({ file, onClose }: { file: DriveFile; onClose: () => void }) {
+function MediaViewer({
+  file,
+  media,
+  onSelect,
+  onClose,
+}: {
+  file: DriveFile
+  media: DriveFile[]
+  onSelect: (file: DriveFile) => void
+  onClose: () => void
+}) {
   const [message, setMessage] = useState<string | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const video = file.mimeType.startsWith('video/')
   const src = `/files/${file.id}/preview`
 
+  const currentIndex = media.findIndex((item) => item.id === file.id)
+  const prevFile = currentIndex > 0 ? media[currentIndex - 1] : null
+  const nextFile = currentIndex >= 0 && currentIndex < media.length - 1 ? media[currentIndex + 1] : null
+
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-[rgba(62,74,92,0.28)] p-2 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={file.name}>
-      <div data-viewer="" className="clay max-h-[94vh] w-full max-w-4xl overflow-auto p-3 sm:p-4">
-        {video ? (
-          <video src={src} controls playsInline className="max-h-[58vh] w-full rounded-[22px] bg-black sm:max-h-[72vh]" />
-        ) : (
-          <img src={src} alt={file.name} className="max-h-[58vh] w-full rounded-[22px] object-contain sm:max-h-[72vh]" />
-        )}
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div className="min-w-0">
+    <div
+      className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(42,52,68,0.44)] p-2.5 backdrop-blur-[2px] sm:p-5"
+      role="dialog"
+      aria-modal="true"
+      aria-label={file.name}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div
+        data-viewer=""
+        onClick={(event) => event.stopPropagation()}
+        onTouchStart={(event) => {
+          const touch = event.touches[0]
+          if (!touch) return
+          touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+        }}
+        onTouchEnd={(event) => {
+          const start = touchStartRef.current
+          touchStartRef.current = null
+          const touch = event.changedTouches[0]
+          if (!start || !touch) return
+          const dx = touch.clientX - start.x
+          const dy = touch.clientY - start.y
+          if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+            if (dx < 0 && nextFile) onSelect(nextFile)
+            else if (dx > 0 && prevFile) onSelect(prevFile)
+            return
+          }
+          if (dy > 75 && Math.abs(dy) > Math.abs(dx) * 1.3) {
+            onClose()
+          }
+        }}
+        className="clay flex max-h-[92svh] w-full max-w-4xl flex-col gap-3 overflow-auto p-3 sm:gap-4 sm:p-4"
+      >
+        {/* Top Bar: Counter + Prev/Next Controls + Close Button */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            {currentIndex >= 0 ? (
+              <span className="clay-pill shrink-0 bg-[var(--field)] px-3 py-1 font-[family-name:var(--font-mono)] text-xs font-medium text-[var(--ink)]">
+                {currentIndex + 1} / {media.length}
+              </span>
+            ) : null}
+            <p className="truncate font-[family-name:var(--font-mono)] text-[11px] text-[var(--muted)] sm:text-xs">
+              {media.length > 1 ? 'Swipe or use arrows to browse · Tap outside to close' : 'Tap outside to close'}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            {media.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  disabled={!prevFile}
+                  aria-label="Previous file"
+                  onClick={() => prevFile && onSelect(prevFile)}
+                  className="clay-pill clay-press flex h-9 w-9 items-center justify-center bg-[var(--clay)] font-[family-name:var(--font-mono)] text-base text-[var(--ink)] disabled:opacity-40"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  disabled={!nextFile}
+                  aria-label="Next file"
+                  onClick={() => nextFile && onSelect(nextFile)}
+                  className="clay-pill clay-press flex h-9 w-9 items-center justify-center bg-[var(--clay)] font-[family-name:var(--font-mono)] text-base text-[var(--ink)] disabled:opacity-40"
+                >
+                  →
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              aria-label="Close preview"
+              onClick={onClose}
+              className="clay-pill clay-press flex h-9 w-9 items-center justify-center bg-[var(--peach)] font-[family-name:var(--font-mono)] text-lg leading-none text-[var(--ink)]"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Media Stage with Overlaid Left / Right Touch Paddles */}
+        <div className="relative flex items-center justify-center overflow-hidden rounded-[22px] bg-[#171e29]/5">
+          {video ? (
+            <video key={src} src={src} controls playsInline className="max-h-[58svh] w-full rounded-[22px] bg-black sm:max-h-[68svh]" />
+          ) : (
+            <img key={src} src={src} alt={file.name} className="max-h-[58svh] w-full rounded-[22px] object-contain sm:max-h-[68svh]" />
+          )}
+
+          {prevFile ? (
+            <button
+              type="button"
+              aria-label="Previous file"
+              onClick={() => onSelect(prevFile)}
+              className="clay-pill clay-press absolute left-2.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center bg-[var(--clay)]/90 font-[family-name:var(--font-mono)] text-lg text-[var(--ink)] shadow-md backdrop-blur-xs sm:left-3 sm:h-11 sm:w-11"
+            >
+              ‹
+            </button>
+          ) : null}
+
+          {nextFile ? (
+            <button
+              type="button"
+              aria-label="Next file"
+              onClick={() => onSelect(nextFile)}
+              className="clay-pill clay-press absolute right-2.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center bg-[var(--clay)]/90 font-[family-name:var(--font-mono)] text-lg text-[var(--ink)] shadow-md backdrop-blur-xs sm:right-3 sm:h-11 sm:w-11"
+            >
+              ›
+            </button>
+          ) : null}
+        </div>
+
+        {/* Bottom File Details & Actions */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
             <p className="truncate font-[family-name:var(--font-display)] text-lg font-medium">{file.name}</p>
             <p className="font-[family-name:var(--font-mono)] text-sm text-[var(--muted)]">{formatSize(file.size)}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <a className="clay-pill bg-[var(--accent)] px-4 py-2 text-sm" href={`/files/${file.id}/download`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <a className="clay-pill bg-[var(--accent)] px-4 py-2 text-sm font-medium" href={`/files/${file.id}/download`}>
               Download
             </a>
             <form
@@ -688,7 +845,7 @@ function MediaViewer({ file, onClose }: { file: DriveFile; onClose: () => void }
             </button>
           </div>
         </div>
-        {message ? <p className="mt-3 text-sm text-[var(--muted)]">{message}</p> : null}
+        {message ? <p className="text-sm text-[var(--muted)]">{message}</p> : null}
       </div>
     </div>
   )

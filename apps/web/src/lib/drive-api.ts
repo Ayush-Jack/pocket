@@ -145,7 +145,12 @@ export async function getAuthStatus(startSignIn = false): Promise<AuthStatus> {
   }
 }
 
-export async function submitAuth(body: { value?: string; firstName?: string; lastName?: string }): Promise<AuthStatus> {
+export async function submitAuth(body: {
+  value?: string
+  firstName?: string
+  lastName?: string
+  reset?: boolean
+}): Promise<AuthStatus> {
   if (!(await browserSessionId())) return { ...signedOut, ok: false, message: 'Sign in on this device first.' }
   const result = await readJson<AuthStatus & { ok?: boolean; message?: string }>('/api/auth', {
     method: 'POST',

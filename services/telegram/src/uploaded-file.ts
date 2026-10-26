@@ -73,9 +73,12 @@ export function readUploadedDocument(chatId: string, message: unknown): Uploaded
 
   const remote = fileRecord.remote
   let remoteId: string | null = null
+  let uniqueId: string | null = null
   if (remote && typeof remote === 'object') {
     const id = (remote as Record<string, unknown>).id
+    const uniq = (remote as Record<string, unknown>).unique_id
     if (typeof id === 'string' && id.length > 0) remoteId = id
+    if (typeof uniq === 'string' && uniq.length > 0) uniqueId = uniq
   }
 
   return {
@@ -83,6 +86,7 @@ export function readUploadedDocument(chatId: string, message: unknown): Uploaded
     messageId,
     fileId,
     remoteId,
+    ...(uniqueId ? { uniqueId } : {}),
     name: typeof documentRecord.file_name === 'string' ? documentRecord.file_name : '',
     size: typeof fileRecord.size === 'number' ? fileRecord.size : 0,
   }

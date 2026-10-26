@@ -109,7 +109,7 @@ export async function getAccount(
 
 export async function listFiles(prisma: PrismaClient, userId: string): Promise<PublicFile[]> {
   const files = await prisma.file.findMany({
-    where: { userId },
+    where: { userId, status: { not: 'DELETED' } },
     orderBy: { createdAt: 'desc' },
   })
   return files.map(toPublicFile)
@@ -138,9 +138,19 @@ export interface RemoteSavedFile {
   messageId: string
   fileId: string
   remoteId: string | null
+  uniqueId?: string | null
   name: string
   mimeType: string
   size: number
+}
+
+function normalizeSyncedName(name: string): string {
+  const stripped = name.replace(/^[0-9a-f]{16}-/i, '')
+  return stripped.length > 0 ? stripped : name
+}
+
+function fileSignature(name: string, size: number | bigint): string {
+  return `${normalizeSyncedName(name).toLowerCase()}::${String(size)}`
 }
 
 export async function syncSavedMessagesFiles(
@@ -149,37 +159,109 @@ export async function syncSavedMessagesFiles(
   folderId: string,
   remoteFiles: RemoteSavedFile[],
 ): Promise<void> {
-  if (remoteFiles.length === 0) return
   const existing = await prisma.file.findMany({
     where: { userId },
-    select: { id: true, telegramMessageId: true, telegramRemoteId: true },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      name: true,
+      size: true,
+      status: true,
+      telegramMessageId: true,
+      telegramRemoteId: true,
+    },
   })
-  const byMessageId = new Map(existing.map((row) => [row.telegramMessageId, row]))
+
+  const liveDocs = remoteFiles.map((doc) => ({
+    ...doc,
+    name: normalizeSyncedName(doc.name),
+  }))
+
+  const liveMessageIds = new Set(liveDocs.map((doc) => doc.messageId))
+  const liveRemoteIds = new Set(
+    liveDocs.map((doc) => doc.remoteId).filter((id): id is string => typeof id === 'string' && id.length > 0),
+  )
+  const liveSignatures = new Set(liveDocs.map((doc) => fileSignature(doc.name, doc.size)))
+
+  // 1. Mark DB records as DELETED if they were deleted directly in Telegram Saved Messages,
+  //    and collapse duplicate active rows for the same file.
+  const keptActiveSignature = new Set<string>()
+  const keptActiveMessageId = new Set<string>()
+  const idsToDelete: string[] = []
+
+  for (const row of existing) {
+    if (row.status === 'DELETED') continue
+    const sig = fileSignature(row.name, row.size)
+    const existsInTelegram =
+      liveMessageIds.has(row.telegramMessageId) ||
+      (row.telegramRemoteId != null && liveRemoteIds.has(row.telegramRemoteId)) ||
+      liveSignatures.has(sig)
+
+    if (!existsInTelegram) {
+      idsToDelete.push(row.id)
+      continue
+    }
+
+    if (keptActiveMessageId.has(row.telegramMessageId) || keptActiveSignature.has(sig)) {
+      idsToDelete.push(row.id)
+      continue
+    }
+
+    keptActiveMessageId.add(row.telegramMessageId)
+    keptActiveSignature.add(sig)
+  }
+
+  if (idsToDelete.length > 0) {
+    await prisma.file.updateMany({
+      where: { id: { in: idsToDelete } },
+      data: { status: 'DELETED' },
+    })
+  }
+
+  // 2. Refresh active rows after cleanup and insert any new Saved Messages files.
+  const activeRows = existing.filter((row) => row.status !== 'DELETED' && !idsToDelete.includes(row.id))
+  const byMessageId = new Map(activeRows.map((row) => [row.telegramMessageId, row]))
+  const bySignature = new Map(activeRows.map((row) => [fileSignature(row.name, row.size), row]))
   const knownRemoteIds = new Set(
-    existing.map((row) => row.telegramRemoteId).filter((id): id is string => typeof id === 'string' && id.length > 0),
+    activeRows
+      .map((row) => row.telegramRemoteId)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0),
+  )
+  const deletedMessageIds = new Set(
+    existing.filter((row) => row.status === 'DELETED').map((row) => row.telegramMessageId),
   )
 
-  for (const doc of [...remoteFiles].reverse()) {
-    const matched = byMessageId.get(doc.messageId)
+  const seenLiveUnique = new Set<string>()
+  for (const doc of [...liveDocs].reverse()) {
+    const sig = fileSignature(doc.name, doc.size)
+    const dedupeKey = doc.uniqueId ? `u:${doc.uniqueId}` : `s:${sig}`
+    if (seenLiveUnique.has(dedupeKey)) continue
+    seenLiveUnique.add(dedupeKey)
+
+    if (deletedMessageIds.has(doc.messageId)) continue
+
+    const matched = byMessageId.get(doc.messageId) ?? bySignature.get(sig)
     if (matched) {
-      if (!matched.telegramRemoteId && doc.remoteId) {
+      const updates: {
+        name?: string
+        telegramMessageId?: string
+        telegramRemoteId?: string
+      } = {}
+      if (matched.name !== doc.name) updates.name = doc.name
+      if (matched.telegramMessageId !== doc.messageId) updates.telegramMessageId = doc.messageId
+      if (doc.remoteId && matched.telegramRemoteId !== doc.remoteId) updates.telegramRemoteId = doc.remoteId
+      if (Object.keys(updates).length > 0) {
         await prisma.file.update({
           where: { id: matched.id },
-          data: { telegramRemoteId: doc.remoteId },
+          data: updates,
         })
       }
       continue
     }
+
     if (doc.remoteId && knownRemoteIds.has(doc.remoteId)) continue
 
-    byMessageId.set(doc.messageId, {
-      id: doc.messageId,
-      telegramMessageId: doc.messageId,
-      telegramRemoteId: doc.remoteId,
-    })
-    if (doc.remoteId) knownRemoteIds.add(doc.remoteId)
-
-    await createUploadedFile(prisma, userId, folderId, {
+    const created = await createUploadedFile(prisma, userId, folderId, {
       name: doc.name,
       mimeType: doc.mimeType,
       size: doc.size,
@@ -189,6 +271,17 @@ export async function syncSavedMessagesFiles(
       telegramRemoteId: doc.remoteId,
       status: 'UPLOADED',
     })
+    const createdRow = {
+      id: created.id,
+      name: created.name,
+      size: BigInt(created.size),
+      status: 'UPLOADED' as const,
+      telegramMessageId: doc.messageId,
+      telegramRemoteId: doc.remoteId,
+    }
+    byMessageId.set(doc.messageId, createdRow)
+    bySignature.set(sig, createdRow)
+    if (doc.remoteId) knownRemoteIds.add(doc.remoteId)
   }
 }
 

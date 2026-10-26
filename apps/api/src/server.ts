@@ -118,11 +118,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       await handleAuthLogout(response, app, sessionId)
       return
     }
-    const service = await app.sessions.get(sessionId)
     if (request.method === 'POST' && pathName === '/api/auth') {
-      await handleAuthSubmit(request, response, service)
+      await handleAuthSubmit(request, response, app, sessionId)
       return
     }
+    const service = await app.sessions.get(sessionId)
     if (!serviceReady(service)) {
       sendJson(response, 401, {
         ok: false,
@@ -175,17 +175,37 @@ function handleAuthStatus(response: ServerResponse, service: StorageService): vo
   sendJson(response, 200, { ok: true, ...status })
 }
 
-async function handleAuthSubmit(request: IncomingMessage, response: ServerResponse, service: StorageService): Promise<void> {
+async function handleAuthSubmit(request: IncomingMessage, response: ServerResponse, app: AppContext, sessionId: string): Promise<void> {
   const body = await readSmallJson(request)
   const record = body && typeof body === 'object' ? body as Record<string, unknown> : {}
-  if (typeof record.firstName === 'string') {
-    await service.submitRegistration(record.firstName, typeof record.lastName === 'string' ? record.lastName : '')
-  } else if (typeof record.value === 'string') {
-    await service.submitSignIn(record.value)
-  } else {
-    throw new AppError('AUTH_NOT_WAITING', 'Enter the value Telegram is asking for.')
+  if (record.reset === true) {
+    await app.sessions.destroy(sessionId)
+    sendJson(response, 200, {
+      ok: true,
+      ready: false,
+      step: 'phone',
+      hint: null,
+      delivery: null,
+      retry: false,
+      message: null,
+    })
+    return
   }
-  sendJson(response, 200, { ok: true, ...service.authStatus() })
+  const service = await app.sessions.get(sessionId)
+  service.beginSignIn()
+  try {
+    if (typeof record.firstName === 'string') {
+      await service.submitRegistration(record.firstName, typeof record.lastName === 'string' ? record.lastName : '')
+    } else if (typeof record.value === 'string') {
+      await service.submitSignIn(record.value)
+    } else {
+      throw new AppError('AUTH_NOT_WAITING', 'Enter the value Telegram is asking for.')
+    }
+    sendJson(response, 200, { ok: true, ...service.authStatus() })
+  } catch (error) {
+    const safe = error instanceof AppError ? error : new AppError('API_FAILED', 'The request could not be completed.')
+    sendJson(response, 200, { ok: false, ...service.authStatus(), message: safe.message })
+  }
 }
 
 async function handleAuthLogout(response: ServerResponse, app: AppContext, sessionId: string): Promise<void> {
@@ -247,8 +267,9 @@ async function handleUpload(request: IncomingMessage, response: ServerResponse, 
     return
   }
 
-  const tempPath = path.join(repoRoot(), '.tdlib-data', 'tmp', `${randomBytes(8).toString('hex')}-${fileName}`)
-  mkdirSync(path.dirname(tempPath), { recursive: true })
+  const tempDir = path.join(repoRoot(), '.tdlib-data', 'tmp', randomBytes(8).toString('hex'))
+  const tempPath = path.join(tempDir, fileName)
+  mkdirSync(tempDir, { recursive: true })
   let size = 0
   try {
     size = await writeUpload(request, tempPath)
@@ -269,7 +290,7 @@ async function handleUpload(request: IncomingMessage, response: ServerResponse, 
     })
     sendJson(response, 201, { ok: true, file })
   } finally {
-    rmSync(tempPath, { force: true })
+    rmSync(tempDir, { recursive: true, force: true })
   }
 }
 
@@ -280,7 +301,17 @@ async function handleDownload(request: IncomingMessage, response: ServerResponse
     sendJson(response, 404, { ok: false, code: 'NOT_FOUND', message: 'Not found.' })
     return
   }
-  const downloaded = await service.downloadSavedDocument(file.telegramMessageId, file.telegramRemoteId)
+  let downloaded: Awaited<ReturnType<StorageService['downloadSavedDocument']>>
+  try {
+    downloaded = await service.downloadSavedDocument(file.telegramMessageId, file.telegramRemoteId)
+  } catch (error) {
+    if (error instanceof AppError && error.code === 'FILE_NOT_FOUND') {
+      await markFileDeleted(app.prisma, account.userId, file.id).catch(() => undefined)
+      sendJson(response, 404, { ok: false, code: 'NOT_FOUND', message: 'Not found.' })
+      return
+    }
+    throw error
+  }
   const range = readByteRange(request.headers.range, downloaded.size)
   if (request.headers.range && !range) {
     response.writeHead(416, { 'content-range': `bytes */${downloaded.size}` })

@@ -42,6 +42,7 @@ describe('readUploadedDocument', () => {
         messageId: '55',
         fileId: '9',
         remoteId: 'remote-1',
+        uniqueId: 'unique-1',
         name: 'upload-test.txt',
         size: 24,
       },

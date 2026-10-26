@@ -3,7 +3,7 @@ import { LoginForm } from '@/components/login-form'
 import { getAuthStatus } from '@/lib/drive-api'
 
 export default async function LoginPage() {
-  const auth = await getAuthStatus(true)
+  const auth = await getAuthStatus(false)
   if (auth.ready) redirect('/drive')
 
   return (

@@ -447,7 +447,7 @@ export class TdlibTelegramStorage implements TelegramStorageService {
     const byMessageId = new Map<string, UploadedTelegramFile>()
     let fromMessageId = 0
 
-    for (let page = 0; page < 4; page += 1) {
+    for (let page = 0; page < 8; page += 1) {
       let history: unknown
       try {
         history = await client.invoke({
@@ -545,11 +545,11 @@ export class TdlibTelegramStorage implements TelegramStorageService {
           return this.ensureLocalFile(String(resolvedId))
         }
       } catch {
-        // Fall through to standard DOWNLOAD_FAILED error below.
+        // Fall through to missing-file error below.
       }
     }
 
-    throw new AppError('DOWNLOAD_FAILED', 'The file could not be downloaded.')
+    throw new AppError('FILE_NOT_FOUND', 'The file was removed from Telegram Saved Messages.')
   }
 
   deleteFile(messageId: string): Promise<DeletedTelegramMessage> {

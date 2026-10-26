@@ -65,9 +65,29 @@ export function KeyboardShortcuts() {
         Shortcuts <kbd className="font-[family-name:var(--font-mono)]">?</kbd>
       </button>
       {open ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(62,74,92,0.28)] p-4" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
-          <div data-shortcuts="" className="clay w-full max-w-md p-6">
-            <h2 className="font-[family-name:var(--font-display)] text-2xl font-medium">Shortcuts</h2>
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(62,74,92,0.28)] p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Keyboard shortcuts"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setOpen(false)
+            }
+          }}
+        >
+          <div data-shortcuts="" onClick={(event) => event.stopPropagation()} className="clay w-full max-w-md p-6">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-[family-name:var(--font-display)] text-2xl font-medium">Shortcuts</h2>
+              <button
+                type="button"
+                aria-label="Close shortcuts"
+                onClick={() => setOpen(false)}
+                className="clay-pill clay-press flex h-8 w-8 items-center justify-center bg-[var(--peach)] font-[family-name:var(--font-mono)] text-base leading-none text-[var(--ink)]"
+              >
+                ×
+              </button>
+            </div>
             <ul className="mt-4 flex flex-col gap-2">
               {sections.map((item) => (
                 <ShortcutRow key={item.key} shortcut={item.key} label={item.label} />

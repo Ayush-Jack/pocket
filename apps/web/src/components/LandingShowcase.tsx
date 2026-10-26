@@ -299,10 +299,11 @@ export function HeroFileObject() {
   useEffect(() => {
     const stage = stageRef.current
     if (!stage) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse)').matches) return
 
     const spring = { x: 0, y: 0, vx: 0, vy: 0 }
     let raf = 0
+    let running = false
     let last = performance.now()
 
     const tick = (now: number) => {
@@ -322,11 +323,34 @@ export function HeroFileObject() {
       const rx = -spring.y * 15
       const ry = spring.x * 18
       stage.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`
+
+      if (
+        Math.abs(spring.x - targetRef.current.x) < 0.001 &&
+        Math.abs(spring.y - targetRef.current.y) < 0.001 &&
+        Math.abs(spring.vx) < 0.002 &&
+        Math.abs(spring.vy) < 0.002
+      ) {
+        running = false
+        return
+      }
       raf = window.requestAnimationFrame(tick)
     }
 
-    raf = window.requestAnimationFrame(tick)
-    return () => window.cancelAnimationFrame(raf)
+    const wake = () => {
+      if (running) return
+      running = true
+      last = performance.now()
+      raf = window.requestAnimationFrame(tick)
+    }
+
+    const parent = stage.parentElement
+    parent?.addEventListener('pointermove', wake, { passive: true })
+    parent?.addEventListener('pointerleave', wake, { passive: true })
+    return () => {
+      parent?.removeEventListener('pointermove', wake)
+      parent?.removeEventListener('pointerleave', wake)
+      window.cancelAnimationFrame(raf)
+    }
   }, [])
 
   return (
@@ -1087,12 +1111,14 @@ function PocketFlipCard({
 
   useEffect(() => {
     const tilt = tiltRef.current
-    if (!tilt) return
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const bounds = boundsRef.current
+    if (!tilt || !bounds) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse)').matches
     if (reduced) return
 
     const spring = { x: 0, y: 0, vx: 0, vy: 0 }
     let raf = 0
+    let running = false
     let last = performance.now()
 
     const tick = (now: number) => {
@@ -1120,11 +1146,33 @@ function PocketFlipCard({
 
       tilt.style.transform = `translate3d(${liftX.toFixed(2)}px, ${liftY.toFixed(2)}px, 0) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`
       tilt.style.boxShadow = `0 ${shadowY.toFixed(1)}px ${shadowBlur.toFixed(1)}px rgba(0, 0, 51, 0.25)`
+
+      if (
+        Math.abs(spring.x - targetRef.current.x) < 0.001 &&
+        Math.abs(spring.y - targetRef.current.y) < 0.001 &&
+        Math.abs(spring.vx) < 0.002 &&
+        Math.abs(spring.vy) < 0.002
+      ) {
+        running = false
+        return
+      }
       raf = window.requestAnimationFrame(tick)
     }
 
-    raf = window.requestAnimationFrame(tick)
-    return () => window.cancelAnimationFrame(raf)
+    const wake = () => {
+      if (running) return
+      running = true
+      last = performance.now()
+      raf = window.requestAnimationFrame(tick)
+    }
+
+    bounds.addEventListener('pointermove', wake, { passive: true })
+    bounds.addEventListener('pointerleave', wake, { passive: true })
+    return () => {
+      bounds.removeEventListener('pointermove', wake)
+      bounds.removeEventListener('pointerleave', wake)
+      window.cancelAnimationFrame(raf)
+    }
   }, [])
 
   return (
@@ -1594,15 +1642,24 @@ export function FeaturesInteractiveSection() {
     const h = -1 * cardHeight * 0.46
     const g = s.rotExit
 
-    const getScrollProgress = () => {
+    const isTouchOrMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches
+
+    let containerTop = 0
+    let scrollable = 1
+    const measureBounds = () => {
       const rect = container.getBoundingClientRect()
-      const scrollable = Math.max(1, rect.height - window.innerHeight)
-      const raw = Math.min(1, Math.max(0, -rect.top / scrollable))
+      containerTop = rect.top + window.scrollY
+      scrollable = Math.max(1, container.offsetHeight - window.innerHeight)
+    }
+    measureBounds()
+
+    const getScrollProgress = () => {
+      const scrolled = window.scrollY - containerTop
+      const raw = Math.min(1, Math.max(0, scrolled / scrollable))
       // Finish all 4 card transitions by 82% of the sticky scroll so Card 04 still rests before unsticking
       return Math.min(1, raw / 0.82)
     }
 
-    // Quicker than the old overdamped spring, still eased so a flip does not snap
     let scrollPos = getScrollProgress()
     let scrollVel = 0
     let cursorX = 0
@@ -1611,10 +1668,17 @@ export function FeaturesInteractiveSection() {
     let cursorYVel = 0
     let lastActiveIdx = -1
     let rafId = 0
+    let running = false
     let lastTime = performance.now()
 
+    for (let t = 0; t < total; t += 1) {
+      const cardEl = cardRefs.current[t]
+      if (!cardEl) continue
+      cardEl.style.boxShadow =
+        '-8px -8px 18px rgba(255, 255, 255, 0.94), 12px 16px 28px rgba(162, 180, 204, 0.42), inset 2px 2px 6px rgba(255, 255, 255, 0.95), inset -3px -4px 10px rgba(178, 194, 214, 0.36)'
+    }
+
     const renderFrame = (activeIndex: number, cx: number, cy: number) => {
-      // Update ambient clay glow color when active rounded card changes
       const roundedIdx = Math.round(Math.max(0, Math.min(total - 1, activeIndex)))
       if (roundedIdx !== lastActiveIdx && glowRef.current) {
         lastActiveIdx = roundedIdx
@@ -1656,39 +1720,43 @@ export function FeaturesInteractiveSection() {
           [0, 0.35, 0.68, 0.96, 1, 0.72, 0],
         )
         const rotScroll = framerInterpolate(p, [0, 1], [0, g])
-        const blur = framerInterpolate(
-          p,
-          [-4, -3, -2, -1, 0, 0.8, 1],
-          [s.blurMax * 0.65, s.blurMax * 0.45, s.blurMax * 0.28, s.blurMax * 0.12, 0, s.blurMax * 0.3, s.blurMax * 0.7],
-        )
-        const shadowAlpha = framerInterpolate(p, [-3, -1, 0, 1], [0.18, 0.42, 0.65, 0])
         const activeFactor = framerInterpolate(p, [-1, 0, 1], [0, 1, 0])
 
-        const tiltX = cy * 5 * activeFactor
-        const tiltY = -cx * 6 * activeFactor
+        const tiltX = isTouchOrMobile ? 0 : cy * 5 * activeFactor
+        const tiltY = isTouchOrMobile ? 0 : -cx * 6 * activeFactor
         const rotX = rotScroll + tiltX
 
-        const ce = framerInterpolate(p, [-1, 0, 1], [14, 0, -10])
-        const le = ce * 1.6
-        const ue = ce * 0.7
+        const ce = framerInterpolate(p, [-1, 0, 1], [12, 0, -8])
+        const le = ce * 1.4
+        const ue = ce * 0.65
 
         cardEl.style.opacity = opacity.toFixed(3)
-        cardEl.style.filter = `blur(${blur.toFixed(2)}px)`
-        cardEl.style.boxShadow = `-10px -10px 22px rgba(255, 255, 255, 0.96), 14px 18px 34px rgba(162, 180, 204, ${shadowAlpha.toFixed(3)}), 0 24px 48px rgba(62, 74, 92, ${(shadowAlpha * 0.22).toFixed(3)}), inset 3px 3px 8px rgba(255, 255, 255, 0.96), inset -4px -5px 12px rgba(178, 194, 214, 0.42)`
+        if (!isTouchOrMobile) {
+          const blur = framerInterpolate(
+            p,
+            [-4, -3, -2, -1, 0, 0.8, 1],
+            [s.blurMax * 0.55, s.blurMax * 0.38, s.blurMax * 0.22, s.blurMax * 0.08, 0, s.blurMax * 0.25, s.blurMax * 0.55],
+          )
+          cardEl.style.filter = blur < 0.15 ? 'none' : `blur(${blur.toFixed(2)}px)`
+        } else if (cardEl.style.filter) {
+          cardEl.style.filter = ''
+        }
         cardEl.style.transform = `translate3d(0px, ${y.toFixed(2)}px, ${z.toFixed(2)}px) scale(${scale.toFixed(4)}) rotateX(${rotX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`
         cardEl.style.pointerEvents = Math.abs(p) < 0.45 ? 'auto' : 'none'
 
-        const headerEl = headerRefs.current[t]
-        if (headerEl) headerEl.style.transform = `translateY(${ce.toFixed(2)}px)`
+        if (!isTouchOrMobile) {
+          const headerEl = headerRefs.current[t]
+          if (headerEl) headerEl.style.transform = `translateY(${ce.toFixed(2)}px)`
 
-        const titleEl = titleRefs.current[t]
-        if (titleEl) titleEl.style.transform = `translateY(${le.toFixed(2)}px)`
+          const titleEl = titleRefs.current[t]
+          if (titleEl) titleEl.style.transform = `translateY(${le.toFixed(2)}px)`
 
-        const descEl = descRefs.current[t]
-        if (descEl) descEl.style.transform = `translateY(${ue.toFixed(2)}px)`
+          const descEl = descRefs.current[t]
+          if (descEl) descEl.style.transform = `translateY(${ue.toFixed(2)}px)`
 
-        const photosEl = photosRefs.current[t]
-        if (photosEl) photosEl.style.transform = `translateY(${(ue * 0.85).toFixed(2)}px)`
+          const photosEl = photosRefs.current[t]
+          if (photosEl) photosEl.style.transform = `translateY(${(ue * 0.85).toFixed(2)}px)`
+        }
 
         const dotEl = dotAccentRefs.current[t]
         if (dotEl) dotEl.style.opacity = activeFactor.toFixed(3)
@@ -1712,35 +1780,73 @@ export function FeaturesInteractiveSection() {
       lastTime = now
 
       const targetScroll = getScrollProgress()
-      if (Math.abs(targetScroll - scrollPos) > 0.35) {
-        scrollPos = targetScroll
-        scrollVel = 0
-      }
 
-      const steps = 2
-      const subDt = dt / steps
-      for (let i = 0; i < steps; i += 1) {
-        const scrollForce = -110 * (scrollPos - targetScroll) - 34 * scrollVel
-        scrollVel += (scrollForce / 0.45) * subDt
-        scrollPos += scrollVel * subDt
+      if (isTouchOrMobile) {
+        // Direct fast exponential smoothing on touch devices so native finger scroll feels instant
+        const alpha = 1 - Math.exp(-dt * 26)
+        scrollPos += (targetScroll - scrollPos) * alpha
+        if (Math.abs(targetScroll - scrollPos) < 0.0006) {
+          scrollPos = targetScroll
+        }
+      } else {
+        if (Math.abs(targetScroll - scrollPos) > 0.35) {
+          scrollPos = targetScroll
+          scrollVel = 0
+        }
+        const steps = 2
+        const subDt = dt / steps
+        for (let i = 0; i < steps; i += 1) {
+          const scrollForce = -135 * (scrollPos - targetScroll) - 36 * scrollVel
+          scrollVel += (scrollForce / 0.45) * subDt
+          scrollPos += scrollVel * subDt
 
-        const cxForce = -130 * (cursorX - cursorTargetRef.current.x) - 22 * cursorXVel
-        cursorXVel += cxForce * subDt
-        cursorX += cursorXVel * subDt
+          const cxForce = -130 * (cursorX - cursorTargetRef.current.x) - 22 * cursorXVel
+          cursorXVel += cxForce * subDt
+          cursorX += cursorXVel * subDt
 
-        const cyForce = -130 * (cursorY - cursorTargetRef.current.y) - 22 * cursorYVel
-        cursorYVel += cyForce * subDt
-        cursorY += cursorYVel * subDt
+          const cyForce = -130 * (cursorY - cursorTargetRef.current.y) - 22 * cursorYVel
+          cursorYVel += cyForce * subDt
+          cursorY += cursorYVel * subDt
+        }
       }
 
       const activeIndex = scrollPos * Math.max(total - 1, 0.0001)
       renderFrame(activeIndex, cursorX, cursorY)
 
+      const scrollSettled = Math.abs(targetScroll - scrollPos) < 0.0008 && Math.abs(scrollVel) < 0.002
+      const cursorSettled =
+        isTouchOrMobile ||
+        (Math.abs(cursorTargetRef.current.x - cursorX) < 0.002 &&
+          Math.abs(cursorTargetRef.current.y - cursorY) < 0.002)
+
+      if (scrollSettled && cursorSettled) {
+        running = false
+        return
+      }
+
       rafId = window.requestAnimationFrame(tick)
     }
 
-    rafId = window.requestAnimationFrame(tick)
+    const wake = () => {
+      if (running) return
+      running = true
+      lastTime = performance.now()
+      rafId = window.requestAnimationFrame(tick)
+    }
+
+    const onScroll = () => wake()
+    const onResize = () => {
+      measureBounds()
+      wake()
+    }
+
+    renderFrame(scrollPos * Math.max(total - 1, 0.0001), 0, 0)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onResize, { passive: true })
+
     return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
       window.cancelAnimationFrame(rafId)
     }
   }, [])
@@ -1796,10 +1902,8 @@ export function FeaturesInteractiveSection() {
             background: 'radial-gradient(circle at 50% 54%, rgba(155, 173, 245, 0.65) 0%, transparent 62%)',
             pointerEvents: 'none',
             zIndex: 0,
-            filter: 'blur(42px)',
-            opacity: 0.78,
-            transition: 'background 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
-            willChange: 'transform',
+            opacity: 0.72,
+            transition: 'background 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
           }}
         />
 

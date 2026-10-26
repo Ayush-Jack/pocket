@@ -22,6 +22,7 @@ export interface UploadedTelegramFile {
   messageId: string
   fileId: string
   remoteId: string | null
+  uniqueId?: string | null
   name: string
   size: number
 }

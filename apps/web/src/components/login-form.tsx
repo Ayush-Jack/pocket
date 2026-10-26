@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import Link from 'next/link'
 import { Logo } from '@/components/logo'
 import type { AuthStatus } from '@/lib/drive-api'
 
@@ -9,57 +10,160 @@ export function LoginForm({ initial }: { initial: AuthStatus }) {
   const [value, setValue] = useState('')
   const [lastName, setLastName] = useState('')
   const [pending, setPending] = useState(false)
+  const [resetting, setResetting] = useState(false)
 
   useEffect(() => {
     if (!status.ready) return
     window.location.assign('/drive')
   }, [status.ready])
 
+  // Warm the TDLib sign-in session in the background without blocking initial page load.
   useEffect(() => {
     if (status.ready) return
-    const timer = window.setInterval(() => {
-      void fetch('/session')
-        .then((response) => response.json() as Promise<AuthStatus>)
-        .then((next) => {
-          if (next.ready) {
-            window.location.assign('/drive')
-            return
-          }
-          setStatus((current) => {
-            if (next.step !== current.step) {
-              setValue('')
-              setLastName('')
-            }
-            return next
-          })
-        })
-    }, 1000)
-    return () => window.clearInterval(timer)
+    const controller = new AbortController()
+    void fetch('/session?start=1', { signal: controller.signal, cache: 'no-store' })
+      .then((response) => (response.ok ? (response.json() as Promise<AuthStatus>) : null))
+      .then((next) => {
+        if (!next) return
+        if (next.ready) {
+          window.location.assign('/drive')
+          return
+        }
+        setStatus((current) => (current.step === 'starting' ? next : current))
+      })
+      .catch(() => {
+        // Ignore aborts on quick navigation.
+      })
+    return () => controller.abort()
   }, [status.ready])
+
+  // Only poll while TDLib is still initializing ('starting'), never in an overlapping loop.
+  useEffect(() => {
+    if (status.ready || status.step !== 'starting') return
+    let cancelled = false
+    let timer = 0
+    const controller = new AbortController()
+
+    const poll = async () => {
+      try {
+        const response = await fetch('/session?start=1', {
+          signal: controller.signal,
+          cache: 'no-store',
+        })
+        if (!response.ok || cancelled) return
+        const next = (await response.json()) as AuthStatus
+        if (cancelled) return
+        if (next.ready) {
+          window.location.assign('/drive')
+          return
+        }
+        setStatus(next)
+        if (next.step === 'starting') {
+          timer = window.setTimeout(() => {
+            void poll()
+          }, 1200)
+        }
+      } catch {
+        // Ignore aborted or transient poll errors.
+      }
+    }
+
+    timer = window.setTimeout(() => {
+      void poll()
+    }, 900)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [status.ready, status.step])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (pending) return
+    if (pending || resetting) return
     setPending(true)
-    const response = await fetch('/session', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(status.step === 'name' ? { firstName: value, lastName } : { value }),
-    })
-    const next = (await response.json()) as AuthStatus
-    setStatus(next)
-    setValue('')
-    setLastName('')
-    setPending(false)
-    if (next.ready) window.location.assign('/drive')
+    try {
+      const response = await fetch('/session', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(status.step === 'name' ? { firstName: value, lastName } : { value }),
+      })
+      const next = (await response.json()) as AuthStatus
+      setStatus(next)
+      setValue('')
+      setLastName('')
+      if (next.ready) window.location.assign('/drive')
+    } catch {
+      setStatus((current) => ({
+        ...current,
+        ok: false,
+        message: 'Could not reach the server. Try again.',
+      }))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function resetToPhoneStep() {
+    if (pending || resetting) return
+    setResetting(true)
+    try {
+      const response = await fetch('/session', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reset: true }),
+      })
+      const next = (await response.json()) as AuthStatus
+      setStatus(next)
+      setValue('')
+      setLastName('')
+      void fetch('/session?start=1', { cache: 'no-store' }).catch(() => undefined)
+    } catch {
+      setStatus({
+        ok: true,
+        ready: false,
+        step: 'phone',
+        hint: null,
+        delivery: null,
+        retry: false,
+      })
+    } finally {
+      setResetting(false)
+    }
   }
 
   if (status.ready) return null
 
   const copy = promptFor(status)
+  const canResetStep =
+    status.step === 'code' ||
+    status.step === 'password' ||
+    status.step === 'email' ||
+    status.step === 'emailCode' ||
+    status.step === 'name'
 
   return (
     <section className="mx-auto flex w-full max-w-md flex-col gap-4 sm:gap-5">
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          href="/"
+          className="clay-pill bg-[var(--clay)] px-3.5 py-2 font-[family-name:var(--font-mono)] text-xs font-medium text-[var(--ink)]"
+        >
+          ← Back to Home
+        </Link>
+        {canResetStep ? (
+          <button
+            type="button"
+            disabled={pending || resetting}
+            onClick={() => void resetToPhoneStep()}
+            className="clay-pill bg-[var(--accent)] px-3.5 py-2 font-[family-name:var(--font-mono)] text-xs font-medium text-[var(--ink)] disabled:opacity-60"
+          >
+            {resetting ? 'Resetting…' : 'Change number'}
+          </button>
+        ) : null}
+      </div>
+
       <header className="clay flex items-center gap-3 px-4 py-4 sm:px-6 sm:py-5">
         <Logo className="h-12 w-12 shrink-0 sm:h-14 sm:w-14" />
         <div className="min-w-0">
@@ -67,6 +171,7 @@ export function LoginForm({ initial }: { initial: AuthStatus }) {
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium sm:text-3xl">Sign in</h1>
         </div>
       </header>
+
       <form onSubmit={submit} className="clay flex flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5">
         <p className="text-[var(--muted)]">{copy.label}</p>
         {status.step === 'offline' || status.step === 'starting' ? null : (
@@ -91,9 +196,25 @@ export function LoginForm({ initial }: { initial: AuthStatus }) {
                 placeholder="Last name"
               />
             ) : null}
-            <button type="submit" disabled={pending} className="clay-press rounded-2xl bg-[var(--clay)] px-4 py-3 text-sm disabled:opacity-60">
-              {pending ? 'Checking…' : 'Continue'}
-            </button>
+            <div className="flex flex-col gap-2.5 sm:flex-row">
+              {canResetStep ? (
+                <button
+                  type="button"
+                  disabled={pending || resetting}
+                  onClick={() => void resetToPhoneStep()}
+                  className="clay-press rounded-2xl bg-[var(--field)] px-4 py-3 text-sm text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-60 sm:w-auto"
+                >
+                  ← Use another number
+                </button>
+              ) : null}
+              <button
+                type="submit"
+                disabled={pending || resetting}
+                className="clay-press flex-1 rounded-2xl bg-[var(--clay)] px-4 py-3 text-sm font-medium disabled:opacity-60"
+              >
+                {pending ? 'Checking…' : 'Continue'}
+              </button>
+            </div>
           </>
         )}
         {status.retry ? <p className="text-sm" role="alert">That was not accepted. Try again.</p> : null}
